@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+@theme {
+    --color-terracota-50: #fdf8f6;
+    --color-terracota-100: #f7ebe8;
+    --color-terracota-500: #c86d51;
+    --color-terracota-600: #b0573c;
+    --color-terracota-700: #93462f;
+
+    --color-gris-claro: #f4f4f5;
+    --color-gris-medio: #71717a;
+    --color-gris-oscuro: #27272a;
+}
+
+/* ==========================================
+    ESTILOS LIMPIOS PARA FULLCALENDAR
+   ========================================== */
+.fc {
+    font-family: inherit !important;
+    --fc-border-color: #e5e7eb;
+    --fc-today-bg-color: #fcf7f7;
+    --fc-neutral-bg-color: #ffffff;
+}
+
+/* Encabezado y barra de herramientas */
+.fc .fc-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem !important;
+}
+
+.fc .fc-toolbar-title {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: #27272a !important;
+}
+
+/* Botones modernos */
+.fc .fc-button {
+    background-color: #ffffff !important;
+    border: 1px solid #d4d4d8 !important;
+    color: #27272a !important;
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.fc .fc-button:hover {
+    background-color: #f4f4f5 !important;
+    border-color: #a1a1aa !important;
+}
+
+.fc .fc-button-active {
+    background-color: #f7ebe8 !important;
+    border-color: #c86d51 !important;
+    color: #93462f !important;
+}
+
+/* Estructura de tablas, horas y celdas centradas */
+.fc th {
+    background-color: #f4f4f5 !important;
+    padding: 10px 0 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    color: #71717a !important;
+    border-color: #e5e7eb !important;
+}
+
+.fc-timegrid-slot {
+    height: 48px !important;
+    border-color: #f4f4f5 !important;
+}
+
+.fc-timegrid-slot-label-cushion, 
+.fc-timegrid-axis-cushion {
+    font-size: 0.75rem !important;
+    color: #71717a !important;
+    font-weight: 500 !important;
+}
+
+.fc-daygrid-day-number {
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: #27272a !important;
+    padding: 8px !important;
+}
+
+.fc-event {
+    border-radius: 6px !important;
+    padding: 2px 6px !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* ==========================================
+   ELIMINACIÓN ABSOLUTA DE LA FILA TODO EL DÍA
+   ========================================== */
+.fc .fc-timegrid-all-day,
+.fc .fc-timegrid-divider {
+    display: none !important;
+}
+
+/* Forzar la alineación y el ancho exacto de la columna de horas */
+.fc .fc-timegrid-axis {
+    width: 70px !important;
+    min-width: 70px !important;
+    max-width: 70px !important;
+}
+
+.fc .fc-timegrid-axis-frame {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.fc-timegrid-slot-label-cushion {
+    display: inline-block !important;
+    text-align: center !important;
+    width: 100% !important;
+}
+
+.fc-direction-ltr .fc-timegrid-col-events {
+    margin-left: 0;
+    margin-right: 0;
+}
