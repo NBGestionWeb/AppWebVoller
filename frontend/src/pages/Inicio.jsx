@@ -5,7 +5,7 @@ import { supabase } from '../config/supabase';
 function Inicio() {
     const [turnosSemana, setTurnosSemana] = useState([]);
     const [cargando, setCargando] = useState(true);
-    const [turnoSeleccionadoWa, setTurnoSeleccionadoWa] = useState(null);
+    // const [turnoSeleccionadoWa, setTurnoSeleccionadoWa] = useState(null);
 
     useEffect(() => {
         cargarTurnosDeLaSemana();
@@ -134,9 +134,16 @@ function Inicio() {
                                         </div>
                                     )}
 
-                                    {/* Botón de Enviar WhatsApp */}
+                                    {/* Botón de Enviar WhatsApp (Opcional temporalmente) */}
                                     <button
-                                        onClick={() => setTurnoSeleccionadoWa(turno)}
+                                        onClick={() => {
+                                            if (turno.pacientes?.telefono) {
+                                                const mensaje = encodeURIComponent(`Hola ${turno.pacientes.nombre}, le escribimos de la clínica para recordarle su turno el ${formatearFechaHora(turno.fecha_hora)}.`);
+                                                window.open(`https://wa.me/${turno.pacientes.telefono}?text=${mensaje}`, '_blank');
+                                            } else {
+                                                alert('El paciente no tiene un número de teléfono registrado.');
+                                            }
+                                        }}
                                         className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium py-1.5 px-3 rounded-lg border border-emerald-200 transition-colors text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                                     >
                                         <span>💬 Enviar WhatsApp</span>
@@ -151,13 +158,6 @@ function Inicio() {
                     </div>
                 )}
             </div>
-
-            {/* Modal para Recordatorio de WhatsApp */}
-            <ModalRecordatorioWa 
-                isOpen={!!turnoSeleccionadoWa} 
-                onClose={() => setTurnoSeleccionadoWa(null)} 
-                turno={turnoSeleccionadoWa} 
-            />
         </div>
     );
 }
