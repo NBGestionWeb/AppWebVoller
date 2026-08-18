@@ -147,6 +147,7 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
 
         setLoading(true);
         try {
+            // 1. Verificar licencias o vacaciones en eventos_calendario
             const { data: licencias, error: errLicencias } = await supabase
                 .from('eventos_calendario')
                 .select('*')
@@ -159,6 +160,40 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
             if (licencias && licencias.length > 0) {
                 setMensajeAlerta({ 
                     texto: 'El profesional seleccionado no se encuentra disponible en esta fecha por licencia o vacaciones.', 
+                    tipo: 'error' 
+                });
+                setLoading(false);
+                return;
+            }
+
+            // 2. Verificar disponibilidad horaria semanal en la tabla `disponibilidad_profesionales`
+            const diasMapeo = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            const numeroDia = new Date(fecha + 'T00:00:00').getDay();
+            const nombreDiaSeleccionado = diasMapeo[numeroDia];
+
+            const { data: dispHoraria, error: errDisp } = await supabase
+                .from('disponibilidad_profesionales')
+                .select('*')
+                .eq('profesional_id', profesionalId)
+                .eq('dia_semana', nombreDiaSeleccionado)
+                .single();
+
+            if (errDisp || !dispHoraria) {
+                setMensajeAlerta({ 
+                    texto: `El profesional no atiende los días ${nombreDiaSeleccionado}.`, 
+                    tipo: 'error' 
+                });
+                setLoading(false);
+                return;
+            }
+
+            // Validar si la hora seleccionada se encuentra dentro del rango de atención del profesional
+            const horaInicioAtencion = dispHoraria.hora_inicio.slice(0, 5);
+            const horaFinAtencion = dispHoraria.hora_fin.slice(0, 5);
+
+            if (hora < horaInicioAtencion || hora >= horaFinAtencion) {
+                setMensajeAlerta({ 
+                    texto: `El profesional no está disponible a las ${hora} hs. Su horario de atención para el día ${nombreDiaSeleccionado} es de ${horaInicioAtencion} a ${horaFinAtencion} hs.`, 
                     tipo: 'error' 
                 });
                 setLoading(false);
@@ -329,7 +364,7 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                             <ul className="space-y-1 max-h-20 overflow-y-auto">
                                 {profesionalesNoDisponibles.map((item, index) => (
                                     <li key={index} className="bg-white/80 p-1.5 rounded-lg border border-amber-100 flex flex-col">
-                                        <span className="font-bold text-gray-800">{item.nombreClient || item.nombreCompleto}</span>
+                                        <span className="font-bold text-gray-800">{item.nombreCompleto}</span>
                                         <span className="text-gray-500">
                                             {item.motivo} ({item.desde} al {item.hasta})
                                         </span>
