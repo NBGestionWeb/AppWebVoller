@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
-import ModalRecordatorioWa from '../components/turnos/ModalRecordatorioWa';
+// import ModalRecordatorioWa from '../components/turnos/ModalRecordatorioWa';
 
 function Inicio() {
     const [turnosSemana, setTurnosSemana] = useState([]);
