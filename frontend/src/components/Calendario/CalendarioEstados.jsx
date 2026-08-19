@@ -116,40 +116,40 @@ function CalendarioEstados() {
     };
 
     return (
-        <div className="container mx-auto p-6 space-y-6 max-w-7xl">
+        <div className="container mx-auto p-4 sm:p-6 space-y-6 max-w-7xl">
             {/* Cabecera y Leyenda */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Calendario y Disponibilidad</h2>
-                    <p className="text-sm text-gray-500">Visualiza turnos, feriados, vacaciones y estados operativos.</p>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Calendario y Disponibilidad</h2>
+                    <p className="text-xs sm:text-sm text-gray-500">Visualiza turnos, feriados, vacaciones y estados operativos.</p>
                 </div>
 
-                <div className="flex flex-wrap gap-2 text-xs font-medium">
+                <div className="flex flex-wrap gap-2 text-xs font-medium w-full md:w-auto">
                     <span className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
                         <span>Disponible</span>
                     </span>
                     <span className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-200">
-                        <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
                         <span>Ocupado</span>
                     </span>
                     <span className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
                         <span>Feriado</span>
                     </span>
                     <span className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200">
-                        <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0"></span>
                         <span>Vacaciones</span>
                     </span>
                     <span className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
-                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0"></span>
                         <span>Viaje</span>
                     </span>
                 </div>
             </div>
 
             {/* Contenedor del Calendario */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <FullCalendar
                     plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                     initialView="dayGridMonth"
@@ -172,21 +172,22 @@ function CalendarioEstados() {
                     selectable={true}
                     select={handleSelectSlot}
                     events={eventos}
-                    height="700px"
+                    height="auto"
+                    contentHeight={550}
                     dayMaxEvents={true}
                 />
             </div>
 
-            {/* Modal de Registro */}
+            {/* Modal de Registro Responsivo */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 overflow-hidden">
-                        <div className="bg-terracota-500 px-6 py-4 flex justify-between items-center text-white">
-                            <h3 className="text-base font-bold">Registrar Estado en Calendario</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-white/80 hover:text-white text-xl font-bold cursor-pointer">&times;</button>
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-gray-100 my-auto">
+                        <div className="bg-terracota-500 px-5 sm:px-6 py-4 flex justify-between items-center text-white">
+                            <h3 className="text-sm sm:text-base font-bold">Registrar Estado en Calendario</h3>
+                            <button onClick={() => setIsModalOpen(false)} className="text-white/80 hover:text-white text-xl font-bold cursor-pointer p-1">&times;</button>
                         </div>
 
-                        <form onSubmit={handleGuardarEvento} className="p-6 space-y-4 text-sm">
+                        <form onSubmit={handleGuardarEvento} className="p-4 sm:p-6 space-y-4 text-sm">
                             <div>
                                 <label className="block text-xs font-semibold text-gray-600 mb-1">Estado</label>
                                 <select 
@@ -227,14 +228,14 @@ function CalendarioEstados() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 mb-1">Fecha Inicio</label>
                                     <input 
                                         type="datetime-local" 
                                         value={fechaInicio} 
                                         onChange={(e) => setFechaInicio(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50/50 text-xs outline-none focus:ring-2 focus:ring-terracota-500 focus:bg-white"
+                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50/50 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-terracota-500 focus:bg-white"
                                         required
                                     />
                                 </div>
@@ -244,22 +245,22 @@ function CalendarioEstados() {
                                         type="datetime-local" 
                                         value={fechaFin} 
                                         onChange={(e) => setFechaFin(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50/50 text-xs outline-none focus:ring-2 focus:ring-terracota-500 focus:bg-white"
+                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50/50 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-terracota-500 focus:bg-white"
                                     />
                                 </div>
                             </div>
 
-                            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t border-gray-100">
                                 <button 
                                     type="button" 
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 cursor-pointer"
+                                    className="w-full sm:w-auto px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 cursor-pointer"
                                 >
                                     Cancelar
                                 </button>
                                 <button 
                                     type="submit"
-                                    className="px-5 py-2 bg-terracota-500 text-white rounded-xl text-sm font-medium hover:bg-terracota-600 shadow-sm cursor-pointer"
+                                    className="w-full sm:w-auto px-5 py-2.5 bg-terracota-500 text-white rounded-xl text-sm font-medium hover:bg-terracota-600 shadow-sm cursor-pointer"
                                 >
                                     Guardar Estado
                                 </button>

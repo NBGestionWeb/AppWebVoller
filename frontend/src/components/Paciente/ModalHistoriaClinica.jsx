@@ -162,7 +162,6 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
             };
 
             if (consultaAEditar) {
-                // Actualizar
                 const { error: updateError } = await supabase
                     .from('historias_clinicas')
                     .update(payload)
@@ -171,7 +170,6 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                 if (updateError) throw updateError;
                 setExito('Consulta actualizada correctamente.');
             } else {
-                // Insertar nueva
                 payload.paciente_id = paciente.id;
                 const { error: insertError } = await supabase
                     .from('historias_clinicas')
@@ -220,8 +218,8 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
     if (!isOpen || !paciente) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl border border-gray-100 overflow-hidden my-8 relative">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl border border-gray-100 overflow-hidden my-auto max-h-[90vh] flex flex-col">
                 
                 {/* Modal de confirmación de eliminación */}
                 {idAEliminar && puedeGestionarHistorias && (
@@ -234,11 +232,11 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                                 <h4 className="font-bold text-gray-800 text-sm mb-1">¿Estás seguro?</h4>
                                 <p className="text-xs text-gray-500">Esta acción eliminará permanentemente este registro de la historia clínica.</p>
                             </div>
-                            <div className="flex space-x-2 pt-2">
+                            <div className="flex flex-col sm:flex-row gap-2 pt-2">
                                 <button 
                                     type="button"
                                     onClick={() => setIdAEliminar(null)}
-                                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-xs font-semibold cursor-pointer"
+                                    className="w-full sm:flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-xs font-semibold cursor-pointer"
                                 >
                                     Cancelar
                                 </button>
@@ -246,7 +244,7 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                                     type="button"
                                     onClick={confirmarEliminar}
                                     style={{ backgroundColor: '#C05621', color: '#FFFFFF' }}
-                                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
+                                    className="w-full sm:flex-1 py-2.5 rounded-xl text-xs font-semibold cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
                                 >
                                     Sí, eliminar
                                 </button>
@@ -256,27 +254,27 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                 )}
 
                 {/* Cabecera */}
-                <div className="bg-terracota-500 px-6 py-4 flex justify-between items-center text-white">
+                <div className="bg-terracota-500 px-4 sm:px-6 py-3.5 sm:py-4 flex justify-between items-center text-white shrink-0">
                     <div>
-                        <h3 className="text-lg font-bold">Historia Clínica - Paciente</h3>
+                        <h3 className="text-base sm:text-lg font-bold">Historia Clínica - Paciente</h3>
                         <p className="text-xs text-white/80">{paciente.nombre} {paciente.apellido} (DNI: {paciente.dni})</p>
                     </div>
                     <button 
                         onClick={onClose}
-                        className="text-white/80 hover:text-white text-xl font-bold cursor-pointer"
+                        className="text-white/80 hover:text-white text-2xl font-bold cursor-pointer p-1 leading-none shrink-0"
                     >
                         &times;
                     </button>
                 </div>
 
-                <div className="p-6 max-h-[75vh] overflow-y-auto text-sm">
+                <div className="p-4 sm:p-6 overflow-y-auto text-sm flex-1">
                     
                     {/* Barra de Navegación Interna */}
-                    <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
-                        <div className="flex space-x-2">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 pb-4 border-b border-gray-100 gap-3">
+                        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
                             <button 
                                 onClick={() => setVista('lista')}
-                                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer text-center ${
                                     vista === 'lista' 
                                         ? 'bg-terracota-500 text-white shadow-xs' 
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -290,25 +288,25 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                                         limpiarFormulario();
                                         setVista('nuevo');
                                     }}
-                                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                                    className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer text-center ${
                                         vista === 'nuevo' 
                                             ? 'bg-terracota-500 text-white shadow-xs' 
                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                                 >
-                                    + Nueva Consulta / Evolución
+                                    + Nueva Consulta
                                 </button>
                             )}
                         </div>
 
                         {vista === 'lista' && (
-                            <div className="flex items-center space-x-2">
+                            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                                 <span className="text-xs text-gray-500">Filtrar por fecha:</span>
                                 <input 
                                     type="date"
                                     value={filtroFecha}
                                     onChange={(e) => setFiltroFecha(e.target.value)}
-                                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs outline-none bg-white"
+                                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs outline-none bg-white flex-1 sm:flex-none"
                                 />
                                 {filtroFecha && (
                                     <button 
@@ -328,7 +326,7 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                             {loading ? (
                                 <p className="text-center text-gray-500 py-12">Cargando registros históricos...</p>
                             ) : historiasFiltradas.length === 0 ? (
-                                <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                                <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4">
                                     <p className="text-gray-500 text-sm mb-1">No se encontraron registros de historia clínica.</p>
                                     <p className="text-xs text-gray-400">
                                         {puedeGestionarHistorias ? 'Utiliza el botón de arriba para registrar la primera consulta.' : 'No hay registros disponibles.'}
@@ -343,8 +341,8 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                                         });
 
                                         return (
-                                            <div key={h.id} className="bg-gray-50 rounded-2xl p-5 border border-gray-200 shadow-2xs space-y-3 relative">
-                                                {/* Cabecera de la tarjeta: Fecha a la izquierda y Botones a la derecha */}
+                                            <div key={h.id} className="bg-gray-50 rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-2xs space-y-3 relative">
+                                                {/* Cabecera de la tarjeta */}
                                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-200/60 pb-3 gap-2">
                                                     <div>
                                                         <span className="text-xs font-bold text-terracota-600 uppercase tracking-wider block">
@@ -355,18 +353,18 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                                                         </h4>
                                                     </div>
                                                     
-                                                    {/* Botones de acción alineados correctamente */}
+                                                    {/* Botones de acción */}
                                                     {puedeGestionarHistorias && (
-                                                        <div className="flex items-center space-x-2">
+                                                        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200/40">
                                                             <button 
                                                                 onClick={() => handleEditarClick(h)}
-                                                                className="px-3 py-1 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-lg text-xs font-medium shadow-2xs cursor-pointer transition-colors"
+                                                                className="px-3 py-1.5 sm:py-1 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-lg text-xs font-medium shadow-2xs cursor-pointer transition-colors"
                                                             >
                                                                 Editar
                                                             </button>
                                                             <button 
                                                                 onClick={() => setIdAEliminar(h.id)}
-                                                                className="px-3 py-1 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 rounded-lg text-xs font-medium shadow-2xs cursor-pointer transition-colors"
+                                                                className="px-3 py-1.5 sm:py-1 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 rounded-lg text-xs font-medium shadow-2xs cursor-pointer transition-colors"
                                                             >
                                                                 Eliminar
                                                             </button>
@@ -374,7 +372,7 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                                                     )}
                                                 </div>
 
-                                                {/* Etiqueta de audiología y profesional interviniente */}
+                                                {/* Etiqueta de audiología y profesional */}
                                                 <div className="flex flex-wrap items-center gap-2 pt-1">
                                                     {h.es_audiologia && (
                                                         <span className="bg-teal-100 text-teal-800 px-2.5 py-1 rounded-full text-xs font-semibold">
@@ -449,7 +447,7 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                                 </div>
                             )}
 
-                            <div className="bg-terracota-50 p-3 rounded-xl border border-terracota-200 flex justify-between items-center">
+                            <div className="bg-terracota-50 p-3 rounded-xl border border-terracota-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                                 <span className="text-xs font-bold text-terracota-900 uppercase">
                                     {consultaAEditar ? 'Editando Registro de Historia Clínica' : 'Registrando Nueva Consulta'}
                                 </span>
@@ -483,7 +481,7 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                                     </select>
                                 </div>
 
-                                <div className="flex items-center pt-5">
+                                <div className="flex items-center pt-2 md:pt-5">
                                     <label className="flex items-center space-x-3 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-gray-200 w-full shadow-2xs">
                                         <input 
                                             type="checkbox"
@@ -614,18 +612,18 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                                 ></textarea>
                             </div>
 
-                            <div className="flex justify-end space-x-3 pt-3 border-t border-gray-100">
+                            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-gray-100">
                                 <button 
                                     type="button"
                                     onClick={() => setVista('lista')}
-                                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl text-xs font-semibold hover:bg-gray-50 transition-colors cursor-pointer"
+                                    className="w-full sm:w-auto px-4 py-2.5 sm:py-2 border border-gray-300 text-gray-700 rounded-xl text-xs font-semibold hover:bg-gray-50 transition-colors cursor-pointer text-center"
                                 >
                                     Cancelar
                                 </button>
                                 <button 
                                     type="submit"
                                     disabled={guardando}
-                                    className="px-5 py-2 bg-terracota-500 text-white rounded-xl text-xs font-semibold hover:bg-terracota-600 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                                    className="w-full sm:w-auto px-5 py-2.5 sm:py-2 bg-terracota-500 text-white rounded-xl text-xs font-semibold hover:bg-terracota-600 transition-colors shadow-sm cursor-pointer disabled:opacity-50 text-center"
                                 >
                                     {guardando ? 'Guardando...' : (consultaAEditar ? 'Guardar Cambios' : 'Guardar Consulta')}
                                 </button>
@@ -636,10 +634,10 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                 </div>
 
                 {/* Pie del Modal */}
-                <div className="bg-gray-50 px-6 py-3 flex justify-end border-t border-gray-100">
+                <div className="bg-gray-50 px-4 sm:px-6 py-3 flex justify-end border-t border-gray-100 shrink-0">
                     <button 
                         onClick={onClose}
-                        className="px-4 py-2 bg-gray-800 text-white rounded-xl text-xs font-semibold hover:bg-gray-700 transition-colors cursor-pointer"
+                        className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-gray-800 text-white rounded-xl text-xs font-semibold hover:bg-gray-700 transition-colors cursor-pointer text-center"
                     >
                         Cerrar Ventana
                     </button>

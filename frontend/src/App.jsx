@@ -53,7 +53,7 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gris-medio">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gris-medio text-sm sm:text-base">
         Cargando sistema...
       </div>
     );
@@ -83,7 +83,7 @@ function App() {
       <div>
         <Navbar onSelectModule={setModuloActivo} rolUsuario={rol} />
 
-        <main className="container mx-auto p-8">
+        <main className="container mx-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8">
           {moduloActivo === 'inicio' && (
             <div className="space-y-6">
               {/* Componente de Inicio que muestra los turnos de la semana */}
@@ -109,18 +109,18 @@ function App() {
         </main>
       </div>
 
-      {/* Footer / Pie de página con el panel de bienvenida y cierre de sesión */}
-      <footer className="bg-white border-t border-gray-200 mt-12 py-6 px-8 shadow-inner">
-        <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      {/* Footer / Pie de página con diseño adaptable y responsivo */}
+      <footer className="bg-white border-t border-gray-200 mt-8 sm:mt-12 py-5 sm:py-6 px-4 sm:px-8 shadow-inner">
+        <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center text-center sm:text-left gap-4">
           <div>
-            <h3 className="text-base font-semibold text-gray-800">Voller - Centro Médico</h3>
+            <h3 className="text-sm sm:text-base font-semibold text-gray-800">Voller - Centro Médico</h3>
             <p className="text-xs text-gris-medio mt-0.5">
               Panel general del centro médico. Perfil actual: <span className="font-semibold capitalize text-terracota-600">{rol}</span>
             </p>
           </div>
           <button 
             onClick={handleLogout}
-            className="text-sm text-red-600 hover:text-red-800 font-medium border border-red-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer bg-red-50/50"
+            className="w-full sm:w-auto text-xs sm:text-sm text-red-600 hover:text-red-800 font-medium border border-red-200 px-4 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer bg-red-50/50 shadow-xs"
           >
             Cerrar Sesión
           </button>

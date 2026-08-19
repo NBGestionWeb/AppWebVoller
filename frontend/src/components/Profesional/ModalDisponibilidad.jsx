@@ -140,35 +140,35 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
     if (!isOpen || !profesional) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-gray-100 overflow-hidden my-8">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-gray-100 overflow-hidden my-4 sm:my-8 relative">
                 
                 {/* Cabecera */}
-                <div className="bg-terracota-500 px-6 py-4 flex justify-between items-center text-white">
-                    <div>
-                        <h3 className="text-lg font-bold">
+                <div className="bg-terracota-500 px-5 sm:px-6 py-4 flex justify-between items-center text-white">
+                    <div className="pr-2">
+                        <h3 className="text-base sm:text-lg font-bold">
                             {puedeGestionar ? 'Configurar Disponibilidad Semanal' : 'Disponibilidad Semanal'}
                         </h3>
-                        <p className="text-xs text-white/80">Dr./Lic. {profesional.nombre} {profesional.apellido} ({profesional.especialidad})</p>
+                        <p className="text-xs text-white/80 break-words">Dr./Lic. {profesional.nombre} {profesional.apellido} ({profesional.especialidad})</p>
                     </div>
                     <button 
                         onClick={onClose}
-                        className="text-white/80 hover:text-white text-xl font-bold cursor-pointer"
+                        className="text-white/80 hover:text-white text-2xl font-bold cursor-pointer p-1 shrink-0"
                     >
                         &times;
                     </button>
                 </div>
 
-                <form onSubmit={handleGuardarTodo} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto text-sm">
+                <form onSubmit={handleGuardarTodo} className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-h-[80vh] overflow-y-auto text-sm">
 
                     {error && (
-                        <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg text-sm text-red-700">
+                        <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg text-xs sm:text-sm text-red-700">
                             {error}
                         </div>
                     )}
 
                     {exito && (
-                        <div className="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg text-sm text-green-700">
+                        <div className="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg text-xs sm:text-sm text-green-700">
                             {exito}
                         </div>
                     )}
@@ -189,43 +189,45 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
                                 return (
                                     <div 
                                         key={dia} 
-                                        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl border transition-colors ${
+                                        className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3.5 rounded-xl border transition-colors gap-3 ${
                                             configDia.activo ? 'bg-terracota-50/40 border-terracota-200' : 'bg-gray-50/60 border-gray-200'
                                         }`}
                                     >
-                                        <div className="flex items-center space-x-3 w-36 mb-2 sm:mb-0">
+                                        {/* Día y Checkbox */}
+                                        <div className="flex items-center space-x-3">
                                             <input 
                                                 type="checkbox"
                                                 checked={configDia.activo}
                                                 disabled={!puedeGestionar}
                                                 onChange={() => handleCheckboxChange(dia)}
-                                                className="w-4 h-4 text-terracota-600 rounded border-gray-300 focus:ring-terracota-500 cursor-pointer disabled:cursor-not-allowed"
+                                                className="w-4 h-4 text-terracota-600 rounded border-gray-300 focus:ring-terracota-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
                                             />
-                                            <span className={`font-semibold text-sm ${configDia.activo ? 'text-gray-900' : 'text-gray-400'}`}>
+                                            <span className={`font-semibold text-xs sm:text-sm ${configDia.activo ? 'text-gray-900' : 'text-gray-400'}`}>
                                                 {dia}
                                             </span>
                                         </div>
 
-                                        <div className="flex items-center space-x-2 w-full sm:w-auto">
-                                            <div className="flex items-center space-x-1">
+                                        {/* Inputs de Horario (Adaptables en móvil y PC) */}
+                                        <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:space-x-2 w-full sm:w-auto pl-7 sm:pl-0">
+                                            <div className="flex items-center space-x-1 justify-between sm:justify-start">
                                                 <span className="text-xs text-gray-500">De:</span>
                                                 <input 
                                                     type="time" 
                                                     value={configDia.hora_inicio}
                                                     disabled={!puedeGestionar || !configDia.activo}
                                                     onChange={(e) => handleHoraChange(dia, 'hora_inicio', e.target.value)}
-                                                    className="px-2.5 py-1.5 border border-gray-300 rounded-lg bg-white text-xs outline-none focus:ring-2 focus:ring-terracota-500 disabled:opacity-40 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                                    className="w-full sm:w-auto px-2.5 py-1.5 border border-gray-300 rounded-lg bg-white text-xs outline-none focus:ring-2 focus:ring-terracota-500 disabled:opacity-40 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                                 />
                                             </div>
 
-                                            <div className="flex items-center space-x-1">
+                                            <div className="flex items-center space-x-1 justify-between sm:justify-start">
                                                 <span className="text-xs text-gray-500">A:</span>
                                                 <input 
                                                     type="time" 
                                                     value={configDia.hora_fin}
                                                     disabled={!puedeGestionar || !configDia.activo}
                                                     onChange={(e) => handleHoraChange(dia, 'hora_fin', e.target.value)}
-                                                    className="px-2.5 py-1.5 border border-gray-300 rounded-lg bg-white text-xs outline-none focus:ring-2 focus:ring-terracota-500 disabled:opacity-40 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                                    className="w-full sm:w-auto px-2.5 py-1.5 border border-gray-300 rounded-lg bg-white text-xs outline-none focus:ring-2 focus:ring-terracota-500 disabled:opacity-40 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                                 />
                                             </div>
                                         </div>
@@ -236,11 +238,11 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
                     )}
 
                     {/* Pie del Modal */}
-                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:space-x-3 pt-4 border-t border-gray-100">
                         <button 
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+                            className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer text-center"
                         >
                             {puedeGestionar ? 'Cancelar' : 'Cerrar'}
                         </button>
@@ -248,7 +250,7 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
                             <button 
                                 type="submit"
                                 disabled={loading || guardando}
-                                className="px-5 py-2 bg-terracota-500 text-white rounded-lg text-sm font-medium hover:bg-terracota-600 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                                className="w-full sm:w-auto px-5 py-2.5 bg-terracota-500 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-terracota-600 transition-colors shadow-sm cursor-pointer disabled:opacity-50 text-center"
                             >
                                 {guardando ? 'Guardando...' : 'Guardar Horarios'}
                             </button>

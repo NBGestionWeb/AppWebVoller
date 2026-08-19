@@ -100,11 +100,12 @@ function Turnos({ rolUsuario }) {
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
+        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 max-w-7xl mx-auto">
+            {/* Cabecera / Título y Botón adaptable */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Módulo de Turnos Médicos</h2>
-                    <p className="text-sm text-gray-500">Agenda general de citas y disponibilidad de atención.</p>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Módulo de Turnos Médicos</h2>
+                    <p className="text-xs sm:text-sm text-gray-500">Agenda general de citas y disponibilidad de atención.</p>
                 </div>
                 {puedeCrearEditarTurnos && (
                     <button
@@ -112,14 +113,15 @@ function Turnos({ rolUsuario }) {
                             setFechaSeleccionada('');
                             setIsModalNuevoOpen(true);
                         }}
-                        className="bg-terracota-500 hover:bg-terracota-600 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors shadow-sm cursor-pointer"
+                        className="w-full sm:w-auto bg-terracota-500 hover:bg-terracota-600 text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center space-x-2"
                     >
-                        + Nuevo Turno
+                        <span>+ Nuevo Turno</span>
                     </button>
                 )}
             </div>
 
-            <div className="w-full">
+            {/* Contenedor del Calendario */}
+            <div className="w-full overflow-hidden">
                 {mounted && (
                     <FullCalendar
                         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -129,6 +131,12 @@ function Turnos({ rolUsuario }) {
                             left: 'prev,next today',
                             center: 'title',
                             right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                        }}
+                        buttonText={{
+                            today: 'Hoy',
+                            month: 'Mes',
+                            week: 'Semana',
+                            day: 'Día'
                         }}
                         slotMinTime="09:00:00"
                         slotMaxTime="19:00:00"
@@ -144,7 +152,8 @@ function Turnos({ rolUsuario }) {
                         events={eventos}
                         eventClick={handleEventClick}
                         editable={false}
-                        height={650}
+                        height="auto"
+                        contentHeight={550}
                         dayMaxEvents={true}
                     />
                 )}
@@ -160,7 +169,7 @@ function Turnos({ rolUsuario }) {
                 />
             )}
 
-            {/* Modal para Ver Detalles / Modificar Turno (Disponible para todos de consulta, limitado por rol adentro) */}
+            {/* Modal para Ver Detalles / Modificar Turno */}
             <ModalDetalleTurno
                 isOpen={isModalDetalleOpen}
                 onClose={() => setIsModalDetalleOpen(false)}

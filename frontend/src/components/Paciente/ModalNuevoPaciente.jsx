@@ -35,7 +35,7 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
                 direccion: pacienteAEditar.direccion || '',
                 obra_social: pacienteAEditar.obra_social || '',
                 nro_afiliado: pacienteAEditar.nro_afiliado || '',
-                derivado_por: pacienteAEditar.derivado_por || '', // <-- Cargar al editar
+                derivado_por: pacienteAEditar.derivado_por || '',
                 contacto_emergencia: pacienteAEditar.contacto_emergencia || '',
                 observaciones: pacienteAEditar.observaciones || '',
                 estado: pacienteAEditar.estado || 'Activo'
@@ -52,7 +52,7 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
                 direccion: '',
                 obra_social: '',
                 nro_afiliado: '',
-                derivado_por: '', // <-- Limpiar al crear
+                derivado_por: '',
                 contacto_emergencia: '',
                 observaciones: '',
                 estado: 'Activo'
@@ -116,37 +116,40 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-gray-100 overflow-hidden my-8">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-gray-100 overflow-hidden my-4 sm:my-8 flex flex-col max-h-[90vh]">
                 
-                <div className="bg-terracota-500 px-6 py-4 flex justify-between items-center text-white">
-                    <h3 className="text-lg font-bold">
+                {/* Header fijo */}
+                <div className="bg-terracota-500 px-4 sm:px-6 py-3.5 sm:py-4 flex justify-between items-center text-white shrink-0">
+                    <h3 className="text-base sm:text-lg font-bold truncate pr-2">
                         {pacienteAEditar ? 'Editar Información del Paciente' : 'Registrar Nuevo Paciente'}
                     </h3>
                     <button 
+                        type="button"
                         onClick={onClose}
-                        className="text-white/80 hover:text-white text-xl font-bold cursor-pointer"
+                        className="text-white/80 hover:text-white text-2xl font-bold cursor-pinter p-1 leading-none"
                     >
                         &times;
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+                {/* Contenido scrolleable */}
+                <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
 
                     {error && (
-                        <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg text-sm text-red-700">
+                        <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg text-xs sm:text-sm text-red-700">
                             {error}
                         </div>
                     )}
 
                     {/* Estado del Paciente */}
-                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <div className="bg-gray-50 p-3.5 sm:p-4 rounded-xl border border-gray-100">
                         <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Estado del Paciente *</label>
                         <select 
                             name="estado"
                             value={formData.estado}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm bg-white font-medium text-gray-800"
+                            className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm bg-white font-medium text-gray-800"
                         >
                             <option value="Activo">Activo</option>
                             <option value="Inactivo">Inactivo</option>
@@ -155,8 +158,8 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
 
                     {/* 1. Datos Personales */}
                     <div>
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">1. Datos Personales</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2.5">1. Datos Personales</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Nombre(s) *</label>
                                 <input 
@@ -165,7 +168,7 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
                                     value={formData.nombre}
                                     onChange={handleChange}
                                     required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
                                     placeholder="Ej: Juan Carlos"
                                 />
                             </div>
@@ -177,7 +180,7 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
                                     value={formData.apellido}
                                     onChange={handleChange}
                                     required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
                                     placeholder="Ej: Pérez"
                                 />
                             </div>
@@ -189,7 +192,7 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
                                     value={formData.dni}
                                     onChange={handleChange}
                                     required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
                                     placeholder="Ej: 35123456"
                                 />
                             </div>
@@ -200,16 +203,16 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
                                     name="fecha_nacimiento"
                                     value={formData.fecha_nacimiento}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm text-gray-700"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm text-gray-700 bg-white"
                                 />
                             </div>
-                            <div>
+                            <div className="sm:col-span-2">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Género / Sexo</label>
                                 <select 
                                     name="genero"
                                     value={formData.genero}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm bg-white"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm bg-white"
                                 >
                                     <option value="">Seleccionar...</option>
                                     <option value="Masculino">Masculino</option>
@@ -224,8 +227,8 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
 
                     {/* 2. Datos de Contacto */}
                     <div>
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">2. Datos de Contacto</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2.5">2. Datos de Contacto</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Teléfono / Celular *</label>
                                 <input 
@@ -234,7 +237,7 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
                                     value={formData.telefono}
                                     onChange={handleChange}
                                     required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
                                     placeholder="Ej: 1122334455"
                                 />
                             </div>
@@ -245,18 +248,18 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
                                     placeholder="correo@ejemplo.com"
                                 />
                             </div>
-                            <div className="md:col-span-2">
+                            <div className="sm:col-span-2">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Domicilio / Dirección</label>
                                 <input 
                                     type="text" 
                                     name="direccion"
                                     value={formData.direccion}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
                                     placeholder="Calle, número, localidad"
                                 />
                             </div>
@@ -267,8 +270,8 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
 
                     {/* 3. Información Médica y Cobertura */}
                     <div>
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">3. Información Médica y Cobertura</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2.5">3. Información Médica y Cobertura</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Obra Social / Prepaga</label>
                                 <input 
@@ -276,7 +279,7 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
                                     name="obra_social"
                                     value={formData.obra_social}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
                                     placeholder="Ej: OSDE, Swiss Medical..."
                                 />
                             </div>
@@ -287,59 +290,59 @@ function ModalNuevoPaciente({ isOpen, onClose, onPacienteGuardado, pacienteAEdit
                                     name="nro_afiliado"
                                     value={formData.nro_afiliado}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
                                     placeholder="Nro de credencial"
                                 />
                             </div>
-                            {/* NUEVO CAMPO: Derivado por */}
-                            <div className="md:col-span-2">
+                            <div className="sm:col-span-2">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Derivado por</label>
                                 <input 
                                     type="text" 
                                     name="derivado_por"
                                     value={formData.derivado_por}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
                                     placeholder="Ej: Dr. Gómez / Hospital X"
                                 />
                             </div>
-                            <div className="md:col-span-2">
+                            <div className="sm:col-span-2">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Contacto de Emergencia</label>
                                 <input 
                                     type="text" 
                                     name="contacto_emergencia"
                                     value={formData.contacto_emergencia}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
                                     placeholder="Nombre y teléfono de un familiar"
                                 />
                             </div>
-                            <div className="md:col-span-2">
+                            <div className="sm:col-span-2">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Observaciones / Alergias / Antecedentes</label>
                                 <textarea 
                                     name="observaciones"
                                     value={formData.observaciones}
                                     onChange={handleChange}
-                                    rows="2"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
+                                    rows="3"
+                                    className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-sm"
                                     placeholder="Ej: Alérgico a la penicilina..."
                                 ></textarea>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                    {/* Botones de acción fijos o al final del scroll */}
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-4 border-t border-gray-100">
                         <button 
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+                            className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
                         >
                             Cancelar
                         </button>
                         <button 
                             type="submit"
                             disabled={loading}
-                            className="px-5 py-2 bg-terracota-500 text-white rounded-lg text-sm font-medium hover:bg-terracota-600 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                            className="w-full sm:w-auto px-5 py-2.5 bg-terracota-500 text-white rounded-lg text-sm font-medium hover:bg-terracota-600 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
                         >
                             {loading ? 'Guardando...' : (pacienteAEditar ? 'Guardar Cambios' : 'Guardar Paciente')}
                         </button>

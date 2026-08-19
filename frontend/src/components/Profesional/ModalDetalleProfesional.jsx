@@ -122,8 +122,8 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
     if (!isOpen || !profesional) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-gray-100 overflow-hidden my-8 relative">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-gray-100 overflow-hidden my-4 sm:my-8 relative">
                 
                 {/* Modal de Confirmación Personalizado */}
                 {puedeGestionar && idLicenciaAEliminar && (
@@ -140,14 +140,14 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                                 <button 
                                     type="button"
                                     onClick={() => setIdLicenciaAEliminar(null)}
-                                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer"
+                                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer"
                                 >
                                     Cancelar
                                 </button>
                                 <button 
                                     type="button"
                                     onClick={confirmarEliminarLicencia}
-                                    className="flex-1 bg-terracota-500 hover:bg-terracota-600 text-white py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer shadow-xs"
+                                    className="flex-1 bg-terracota-500 hover:bg-terracota-600 text-white py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer shadow-xs"
                                 >
                                     Sí, eliminar
                                 </button>
@@ -156,10 +156,11 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                     </div>
                 )}
 
-                <div className="bg-terracota-500 px-6 py-4 flex justify-between items-center text-white">
-                    <div>
-                        <div className="flex items-center space-x-3">
-                            <h3 className="text-lg font-bold">Ficha del Profesional</h3>
+                {/* Cabecera del Modal */}
+                <div className="bg-terracota-500 px-5 sm:px-6 py-4 flex justify-between items-center text-white">
+                    <div className="pr-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base sm:text-lg font-bold">Ficha del Profesional</h3>
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                                 profesional.estado === 'Inactivo' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                             }`}>
@@ -169,13 +170,14 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                     </div>
                     <button 
                         onClick={onClose}
-                        className="text-white/80 hover:text-white text-xl font-bold cursor-pointer"
+                        className="text-white/80 hover:text-white text-2xl font-bold cursor-pointer p-1 shrink-0"
                     >
                         &times;
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto text-sm">
+                {/* Contenido Desplazable */}
+                <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 max-h-[75vh] overflow-y-auto text-sm">
                     {/* Alerta Visual Integrada */}
                     {mensajeAlerta && (
                         <div className={`p-3 rounded-xl text-xs font-medium border flex justify-between items-center animate-fadeIn ${
@@ -183,10 +185,10 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                                 ? 'bg-red-50 text-red-700 border-red-200' 
                                 : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         }`}>
-                            <span>{mensajeAlerta.texto}</span>
+                            <span className="pr-2">{mensajeAlerta.texto}</span>
                             <button 
                                 onClick={() => setMensajeAlerta(null)} 
-                                className="text-current font-bold ml-2 hover:opacity-70 cursor-pointer"
+                                className="text-current font-bold ml-2 hover:opacity-70 cursor-pointer text-base p-1"
                             >
                                 &times;
                             </button>
@@ -196,7 +198,7 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                     {/* Información General */}
                     <div>
                         <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">1. Información General</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                             <div>
                                 <span className="block text-xs text-gray-500">Nombre y Apellido</span>
                                 <span className="font-semibold text-gray-800">{profesional.nombre} {profesional.apellido}</span>
@@ -219,20 +221,20 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                     {/* Datos de Contacto */}
                     <div>
                         <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">2. Datos de Contacto</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                             <div>
                                 <span className="block text-xs text-gray-500">Teléfono / Celular</span>
                                 <span className="font-semibold text-gray-800">{profesional.telefono}</span>
                             </div>
                             <div>
                                 <span className="block text-xs text-gray-500">Correo Electrónico</span>
-                                <span className="text-gray-800">{profesional.email || 'No registrado'}</span>
+                                <span className="text-gray-800 break-all">{profesional.email || 'No registrado'}</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Botón rápido para ir a la disponibilidad */}
-                    <div className="bg-terracota-50 p-4 rounded-xl border border-terracota-100 flex justify-between items-center">
+                    <div className="bg-terracota-50 p-4 rounded-xl border border-terracota-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div>
                             <h5 className="text-xs font-semibold text-terracota-900 uppercase">Disponibilidad Semanal</h5>
                             <p className="text-xs text-terracota-700">Consulta los días y horarios que atiende el profesional.</p>
@@ -242,7 +244,7 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                                 onClose();
                                 onAbrirDisponibilidad(profesional);
                             }}
-                            className="bg-terracota-500 hover:bg-terracota-600 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer shadow-xs"
+                            className="w-full sm:w-auto bg-terracota-500 hover:bg-terracota-600 text-white px-4 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer shadow-xs text-center shrink-0"
                         >
                             Ver Horarios
                         </button>
@@ -255,13 +257,13 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                         {/* Formulario para agregar licencia (Solo Administrador) */}
                         {puedeGestionar && (
                             <form onSubmit={handleCrearLicencia} className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3 mb-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
                                         <select 
                                             value={tipoLicencia}
                                             onChange={(e) => setTipoLicencia(e.target.value)}
-                                            className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white"
+                                            className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
                                         >
                                             <option value="vacaciones"> Vacaciones</option>
                                             <option value="viaje"> Licencia / Viaje</option>
@@ -274,19 +276,19 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                                             placeholder="Ej. Vacaciones de invierno..."
                                             value={motivoLicencia}
                                             onChange={(e) => setMotivoLicencia(e.target.value)}
-                                            className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white"
+                                            className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1">Desde *</label>
                                         <input 
                                             type="date" 
                                             value={fechaInicio}
                                             onChange={(e) => setFechaInicio(e.target.value)}
-                                            className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white"
+                                            className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
                                             required
                                         />
                                     </div>
@@ -296,7 +298,7 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                                             type="date" 
                                             value={fechaFin}
                                             onChange={(e) => setFechaFin(e.target.value)}
-                                            className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white"
+                                            className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
                                             required
                                         />
                                     </div>
@@ -306,7 +308,7 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                                     <button 
                                         type="submit"
                                         disabled={guardando}
-                                        className="bg-terracota-500 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+                                        className="w-full sm:w-auto bg-terracota-500 text-white px-4 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 text-center shadow-xs"
                                     >
                                         {guardando ? 'Registrando...' : '+ Registrar Licencia / Vacación'}
                                     </button>
@@ -320,9 +322,8 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                             {licencias.length === 0 ? (
                                 <p className="text-xs text-gray-400 italic bg-gray-50/50 p-3 rounded-lg text-center">No hay licencias ni vacaciones registradas para este profesional.</p>
                             ) : (
-                                <div className="max-h-40 overflow-y-auto space-y-2">
+                                <div className="max-h-44 overflow-y-auto space-y-2 pr-1">
                                     {licencias.map(lic => {
-                                        // Extraer solo la parte YYYY-MM-DD para evitar desfases de zona horaria / horas
                                         const fechaIniStr = lic.fecha_inicio ? lic.fecha_inicio.split('T')[0] : '';
                                         const fechaFinStr = lic.fecha_fin ? lic.fecha_fin.split('T')[0] : '';
 
@@ -330,7 +331,7 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                                         const fFinFormatted = fechaFinStr ? new Date(fechaFinStr + 'T00:00:00').toLocaleDateString() : '';
 
                                         return (
-                                            <div key={lic.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 shadow-2xs text-xs">
+                                            <div key={lic.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-3 rounded-lg border border-gray-200 shadow-2xs text-xs gap-2">
                                                 <div>
                                                     <span className="font-semibold text-gray-800 block">{lic.titulo}</span>
                                                     <span className="text-gray-500">
@@ -341,7 +342,7 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                                                     <button 
                                                         type="button"
                                                         onClick={() => setIdLicenciaAEliminar(lic.id)}
-                                                        className="text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded cursor-pointer"
+                                                        className="text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded cursor-pointer self-end sm:self-center"
                                                     >
                                                         Eliminar
                                                     </button>
@@ -355,23 +356,24 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                     </div>
                 </div>
 
-                <div className="bg-gray-50 px-6 py-3 flex justify-between items-center border-t border-gray-100">
+                {/* Pie del Modal */}
+                <div className="bg-gray-50 px-4 sm:px-6 py-3 flex flex-col-reverse sm:flex-row justify-between items-center border-t border-gray-100 gap-2">
                     {puedeGestionar ? (
                         <button 
                             onClick={() => {
                                 onClose();
                                 onEditar(profesional);
                             }}
-                            className="px-4 py-2 bg-terracota-500 text-white rounded-lg text-sm font-medium hover:bg-terracota-600 transition-colors cursor-pointer"
+                            className="w-full sm:w-auto px-4 py-2.5 bg-terracota-500 text-white rounded-lg text-xs font-medium hover:bg-terracota-600 transition-colors cursor-pointer text-center shadow-xs"
                         >
                             Editar Profesional
                         </button>
                     ) : (
-                        <div></div>
+                        <div className="hidden sm:block"></div>
                     )}
                     <button 
                         onClick={onClose}
-                        className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors cursor-pointer"
+                        className="w-full sm:w-auto px-4 py-2.5 bg-gray-800 text-white rounded-lg text-xs font-medium hover:bg-gray-700 transition-colors cursor-pointer text-center"
                     >
                         Cerrar
                     </button>
