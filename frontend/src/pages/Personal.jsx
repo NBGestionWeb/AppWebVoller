@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase.js';
 import ModalNuevoPersonal from '../components/Personal/ModalNuevoPersonal';
 import ModalDetallePersonal from '../components/Personal/ModalDetallePersonal';
+import toast from 'react-hot-toast';
 
 function Personal() {
     const [personalList, setPersonalList] = useState([]);
@@ -13,6 +14,10 @@ function Personal() {
     const [isModalDetalleOpen, setIsModalDetalleOpen] = useState(false);
     const [personalSeleccionado, setPersonalSeleccionado] = useState(null);
     const [personalAEditar, setPersonalAEditar] = useState(null);
+
+    // Estado para el modal de confirmación de eliminación
+    const [personaAEliminar, setPersonaAEliminar] = useState(null);
+    const [eliminando, setEliminando] = useState(false);
 
     useEffect(() => {
         cargarPersonal();
@@ -49,6 +54,41 @@ function Personal() {
     const handleDetalleClick = (persona) => {
         setPersonalSeleccionado(persona);
         setIsModalDetalleOpen(true);
+    };
+
+    const handleEliminarClick = (persona, e) => {
+        e.stopPropagation();
+        setPersonaAEliminar(persona);
+    };
+
+    const confirmarEliminacion = async () => {
+        if (!personaAEliminar) return;
+
+        setEliminando(true);
+        try {
+            // 1. Eliminar de la tabla perfiles si existe
+            await supabase
+                .from('perfiles')
+                .delete()
+                .eq('email', personaAEliminar.email);
+
+            // 2. Eliminar de la tabla personal
+            const { error } = await supabase
+                .from('personal')
+                .delete()
+                .eq('id', personaAEliminar.id);
+
+            if (error) throw error;
+
+            toast.success('Personal eliminado correctamente');
+            setPersonaAEliminar(null);
+            cargarPersonal();
+        } catch (err) {
+            console.error('Error al eliminar personal:', err.message);
+            toast.error('No se pudo eliminar el registro');
+        } finally {
+            setEliminando(false);
+        }
     };
 
     // Filtrar personal por nombre, apellido o DNI
@@ -143,6 +183,12 @@ function Personal() {
                                             >
                                                 Editar
                                             </button>
+                                            <button
+                                                onClick={(e) => handleEliminarClick(persona, e)}
+                                                className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                                            >
+                                                Eliminar
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -151,6 +197,43 @@ function Personal() {
                     </div>
                 )}
             </div>
+
+            {/* Modal de Confirmación de Eliminación Personalizado */}
+            {personaAEliminar && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fadeIn">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden p-6 space-y-5 text-center">
+                        <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-lg font-bold text-gray-800">¿Eliminar miembro del personal?</h3>
+                            <p className="text-sm text-gray-500">
+                                Estás a punto de eliminar a <span className="font-semibold text-gray-700">{personaAEliminar.nombre} {personaAEliminar.apellido}</span>. Esta acción no se puede deshacer y perderá su acceso al sistema.
+                            </p>
+                        </div>
+                        <div className="flex justify-center space-x-3 pt-2">
+                            <button
+                                type="button"
+                                disabled={eliminando}
+                                onClick={() => setPersonaAEliminar(null)}
+                                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                disabled={eliminando}
+                                onClick={confirmarEliminacion}
+                                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                            >
+                                {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal para Crear / Editar Personal */}
             <ModalNuevoPersonal
