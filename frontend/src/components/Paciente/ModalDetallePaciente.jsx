@@ -1,6 +1,9 @@
 import React from 'react';
+import { usePermisos } from '../../hooks/usePermisos';
 
 function ModalDetallePaciente({ isOpen, onClose, paciente, onEditar }) {
+    const { tienePermiso, loadingPermisos } = usePermisos();
+
     if (!isOpen || !paciente) return null;
 
     return (
@@ -111,15 +114,19 @@ function ModalDetallePaciente({ isOpen, onClose, paciente, onEditar }) {
                     >
                         Cerrar
                     </button>
-                    <button 
-                        onClick={() => {
-                            onClose();
-                            onEditar(paciente);
-                        }}
-                        className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-terracota-500 text-white rounded-lg text-sm font-medium hover:bg-terracota-600 transition-colors cursor-pointer text-center shadow-sm"
-                    >
-                        Editar Paciente
-                    </button>
+                    
+                    {/* Botón de edición condicionado al permiso 'edicion_paciente' */}
+                    {!loadingPermisos && tienePermiso('edicion_paciente') && (
+                        <button 
+                            onClick={() => {
+                                onClose();
+                                onEditar(paciente);
+                            }}
+                            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-terracota-500 text-white rounded-lg text-sm font-medium hover:bg-terracota-600 transition-colors cursor-pointer text-center shadow-sm"
+                        >
+                            Editar Paciente
+                        </button>
+                    )}
                 </div>
 
             </div>

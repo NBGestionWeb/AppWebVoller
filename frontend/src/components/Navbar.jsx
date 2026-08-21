@@ -1,11 +1,34 @@
 import React, { useState } from 'react';
 
-function Navbar({ onSelectModule }) {
+function Navbar({ onSelectModule, moduloActivo, usuario }) {
     const [isOpen, setIsOpen] = useState(false);
 
     const handleSelect = (modulo) => {
         onSelectModule(modulo);
         setIsOpen(false); // Cierra el menú en mobile al hacer clic en una opción
+    };
+
+    // Verificamos si el usuario actual es administrador
+    // (Asumiendo que el rol viene en usuario.perfil.rol o una propiedad similar)
+    const esAdmin = usuario?.perfil?.rol === 'admin' || usuario?.perfil?.es_admin === true;
+
+    // Función auxiliar para definir los estilos de los botones según si están activos
+    const getButtonClass = (modulo) => {
+        const isActive = moduloActivo === modulo;
+        return `transition-colors cursor-pointer rounded-lg px-3 py-1.5 font-medium ${
+            isActive 
+                ? 'bg-terracota-700 text-white shadow-inner' 
+                : 'hover:bg-terracota-600 text-white/90 hover:text-white'
+        }`;
+    };
+
+    const getMobileButtonClass = (modulo) => {
+        const isActive = moduloActivo === modulo;
+        return `w-full text-left py-2 px-3 rounded-lg transition-colors cursor-pointer ${
+            isActive 
+                ? 'bg-terracota-700 text-white font-semibold' 
+                : 'hover:bg-terracota-700 text-white/90'
+        }`;
     };
 
     return (
@@ -35,32 +58,40 @@ function Navbar({ onSelectModule }) {
                 </button>
 
                 {/* Menú de Escritorio (Oculto en celulares) */}
-                <ul className="hidden md:flex space-x-6 font-medium items-center">
+                <ul className="hidden md:flex space-x-2 font-medium items-center">
                     <li>
-                        <button onClick={() => handleSelect('inicio')} className="hover:text-gray-100/80 transition-colors cursor-pointer">
+                        <button onClick={() => handleSelect('inicio')} className={getButtonClass('inicio')}>
                             Inicio
                         </button>
                     </li>
                     <li>
-                        <button onClick={() => handleSelect('pacientes')} className="hover:text-gray-100/80 transition-colors cursor-pointer">
+                        <button onClick={() => handleSelect('pacientes')} className={getButtonClass('pacientes')}>
                             Pacientes
                         </button>
                     </li>
                     <li>
-                        <button onClick={() => handleSelect('turnos')} className="hover:text-gray-100/80 transition-colors cursor-pointer">
+                        <button onClick={() => handleSelect('turnos')} className={getButtonClass('turnos')}>
                             Turnos
                         </button>
                     </li>
                     <li>
-                        <button onClick={() => handleSelect('medicos')} className="hover:text-gray-100/80 transition-colors cursor-pointer">
+                        <button onClick={() => handleSelect('medicos')} className={getButtonClass('medicos')}>
                             Profesionales
                         </button>
                     </li>
                     <li>
-                        <button onClick={() => handleSelect('audifonos')} className="hover:text-gray-100/80 transition-colors cursor-pointer">
+                        <button onClick={() => handleSelect('audifonos')} className={getButtonClass('audifonos')}>
                             Audífonos
                         </button>
                     </li>
+                    {/* Renderizado condicional: Solo visible si es administrador */}
+                    {esAdmin && (
+                        <li>
+                            <button onClick={() => handleSelect('personal')} className={getButtonClass('personal')}>
+                                Personal
+                            </button>
+                        </li>
+                    )}
                 </ul>
             </div>
 
@@ -70,7 +101,7 @@ function Navbar({ onSelectModule }) {
                     <li>
                         <button 
                             onClick={() => handleSelect('inicio')} 
-                            className="w-full text-left py-2 px-3 rounded-lg hover:bg-terracota-700 transition-colors cursor-pointer"
+                            className={getMobileButtonClass('inicio')}
                         >
                             Inicio
                         </button>
@@ -78,7 +109,7 @@ function Navbar({ onSelectModule }) {
                     <li>
                         <button 
                             onClick={() => handleSelect('pacientes')} 
-                            className="w-full text-left py-2 px-3 rounded-lg hover:bg-terracota-700 transition-colors cursor-pointer"
+                            className={getMobileButtonClass('pacientes')}
                         >
                             Pacientes
                         </button>
@@ -86,7 +117,7 @@ function Navbar({ onSelectModule }) {
                     <li>
                         <button 
                             onClick={() => handleSelect('turnos')} 
-                            className="w-full text-left py-2 px-3 rounded-lg hover:bg-terracota-700 transition-colors cursor-pointer"
+                            className={getMobileButtonClass('turnos')}
                         >
                             Turnos
                         </button>
@@ -94,7 +125,7 @@ function Navbar({ onSelectModule }) {
                     <li>
                         <button 
                             onClick={() => handleSelect('medicos')} 
-                            className="w-full text-left py-2 px-3 rounded-lg hover:bg-terracota-700 transition-colors cursor-pointer"
+                            className={getMobileButtonClass('medicos')}
                         >
                             Profesionales
                         </button>
@@ -102,11 +133,22 @@ function Navbar({ onSelectModule }) {
                     <li>
                         <button 
                             onClick={() => handleSelect('audifonos')} 
-                            className="w-full text-left py-2 px-3 rounded-lg hover:bg-terracota-700 transition-colors cursor-pointer"
+                            className={getMobileButtonClass('audifonos')}
                         >
                             Audífonos
                         </button>
                     </li>
+                    {/* Renderizado condicional móvil: Solo visible si es administrador */}
+                    {esAdmin && (
+                        <li>
+                            <button 
+                                onClick={() => handleSelect('personal')} 
+                                className={getMobileButtonClass('personal')}
+                            >
+                                Personal
+                            </button>
+                        </li>
+                    )}
                 </ul>
             )}
         </nav>

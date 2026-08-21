@@ -5,10 +5,13 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
 import { supabase } from '../config/supabase.js';
+import { usePermisos } from '../hooks/usePermisos';
 import ModalNuevoTurno from '../components/Turnos/ModalNuevoTurno';
 import ModalDetalleTurno from '../components/Turnos/ModalDetalleTurno';
 
-function Turnos({ rolUsuario }) {
+function Turnos() {
+    const { tienePermiso, loadingPermisos } = usePermisos();
+
     const [mounted, setMounted] = useState(false);
     const [eventos, setEventos] = useState([]);
     
@@ -17,12 +20,6 @@ function Turnos({ rolUsuario }) {
     const [isModalDetalleOpen, setIsModalDetalleOpen] = useState(false);
     const [fechaSeleccionada, setFechaSeleccionada] = useState('');
     const [turnoIdSeleccionado, setTurnoIdSeleccionado] = useState(null);
-
-    // Permisos según el rol:
-    // - administrador: gestión total (crear o editar turnos)
-    // - recepcionista: turnos (crear o editar)
-    // - profesional: agenda (solo vista, sin crear ni editar)
-    const puedeCrearEditarTurnos = rolUsuario === 'administrador' || rolUsuario === 'recepcionista';
 
     useEffect(() => {
         setMounted(true);
@@ -86,15 +83,16 @@ function Turnos({ rolUsuario }) {
     };
 
     const handleDateSelect = (selectInfo) => {
-        if (!puedeCrearEditarTurnos) return; // Si es profesional, no permite crear turnos desde la grilla
+        if (!loadingPermisos && !tienePermiso('carga_turnos')) {
+            alert('No cuentas con permisos para agendar nuevos turnos.');
+            return;
+        }
         const fechaIso = selectInfo.startStr.slice(0, 16);
         setFechaSeleccionada(fechaIso);
         setIsModalNuevoOpen(true);
     };
 
     const handleEventClick = (clickInfo) => {
-        // Todos los roles (incluyendo profesionales) pueden ver el detalle del turno,
-        // pero los botones de modificar/eliminar se filtran dentro del modal según el rol.
         setTurnoIdSeleccionado(clickInfo.event.id);
         setIsModalDetalleOpen(true);
     };
@@ -107,17 +105,20 @@ function Turnos({ rolUsuario }) {
                     <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Módulo de Turnos Médicos</h2>
                     <p className="text-xs sm:text-sm text-gray-500">Agenda general de citas y disponibilidad de atención.</p>
                 </div>
-                {puedeCrearEditarTurnos && (
-                    <button
-                        onClick={() => {
-                            setFechaSeleccionada('');
-                            setIsModalNuevoOpen(true);
-                        }}
-                        className="w-full sm:w-auto bg-terracota-500 hover:bg-terracota-600 text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center space-x-2"
-                    >
-                        <span>+ Nuevo Turno</span>
-                    </button>
-                )}
+                <button
+                    onClick={() => {
+                        if (!loadingPermisos && !tienePermiso('carga_turnos')) {
+                            alert('No cuentas con permisos para agendar nuevos turnos.');
+                            return;
+                        }
+                        setFechaSeleccionada('');
+                        setIsModalNuevoOpen(true);
+                    }}
+                    disabled={!loadingPermisos && !tienePermiso('carga_turnos')}
+                    className="w-full sm:w-auto bg-terracota-500 hover:bg-terracota-600 text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <span>+ Nuevo Turno</span>
+                </button>
             </div>
 
             {/* Contenedor del Calendario */}
@@ -147,7 +148,7 @@ function Turnos({ rolUsuario }) {
                             hour12: false,
                             omitZeroMinute: false
                         }}
-                        selectable={puedeCrearEditarTurnos}
+                        selectable={true}
                         select={handleDateSelect}
                         events={eventos}
                         eventClick={handleEventClick}
@@ -160,14 +161,12 @@ function Turnos({ rolUsuario }) {
             </div>
 
             {/* Modal para Crear Turno */}
-            {puedeCrearEditarTurnos && (
-                <ModalNuevoTurno
-                    isOpen={isModalNuevoOpen}
-                    onClose={() => setIsModalNuevoOpen(false)}
-                    onTurnoCreado={cargarTurnos}
-                    fechaSeleccionada={fechaSeleccionada}
-                />
-            )}
+            <ModalNuevoTurno
+                isOpen={isModalNuevoOpen}
+                onClose={() => setIsModalNuevoOpen(false)}
+                onTurnoCreado={cargarTurnos}
+                fechaSeleccionada={fechaSeleccionada}
+            />
 
             {/* Modal para Ver Detalles / Modificar Turno */}
             <ModalDetalleTurno
@@ -175,7 +174,6 @@ function Turnos({ rolUsuario }) {
                 onClose={() => setIsModalDetalleOpen(false)}
                 turnoId={turnoIdSeleccionado}
                 onTurnoActualizado={cargarTurnos}
-                rolUsuario={rolUsuario}
             />
         </div>
     );

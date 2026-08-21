@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from "../../config/supabase";
+import { usePermisos } from '../../hooks/usePermisos';
+import toast from 'react-hot-toast'; // Importamos la librería de notificaciones
 
 const ModalAudifono = ({ isOpen, onClose, onSave, audifonoAEditar }) => {
+    const { tienePermiso, loadingPermisos } = usePermisos();
+
     const [formData, setFormData] = useState({
         modelo: '',
         tipo_operacion: '',
@@ -16,6 +20,7 @@ const ModalAudifono = ({ isOpen, onClose, onSave, audifonoAEditar }) => {
     const [listaPacientes, setListaPacientes] = useState([]);
     const [busqueda, setBusqueda] = useState('');
     const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
+    const [errorPermiso, setErrorPermiso] = useState('');
 
     useEffect(() => {
         if (isOpen) {
@@ -27,6 +32,7 @@ const ModalAudifono = ({ isOpen, onClose, onSave, audifonoAEditar }) => {
                 setListaPacientes(data || []);
             };
             fetchPacientes();
+            setErrorPermiso('');
         }
     }, [isOpen]);
 
@@ -84,6 +90,17 @@ const ModalAudifono = ({ isOpen, onClose, onSave, audifonoAEditar }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        setErrorPermiso('');
+
+        if (!loadingPermisos && !tienePermiso('carga_audifonos')) {
+            const mensaje = audifonoAEditar 
+                ? 'No se puede editar porque no tiene los permisos necesarios.' 
+                : 'No cuentas con permisos para registrar o modificar audífonos.';
+            setErrorPermiso(mensaje);
+            toast.error(mensaje);
+            return;
+        }
+
         if (onSave) {
             onSave({
                 ...formData,
@@ -116,6 +133,13 @@ const ModalAudifono = ({ isOpen, onClose, onSave, audifonoAEditar }) => {
                 <form onSubmit={handleSubmit}>
                     {/* Cuerpo del Formulario con scroll optimizado */}
                     <div className="p-4 sm:p-6 space-y-4 max-h-[75vh] sm:max-h-[70vh] overflow-y-auto">
+                        
+                        {errorPermiso && (
+                            <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg text-xs sm:text-sm text-red-700">
+                                {errorPermiso}
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
@@ -259,7 +283,7 @@ const ModalAudifono = ({ isOpen, onClose, onSave, audifonoAEditar }) => {
                         </div>
                     </div>
 
-                    {/* Botones de Acción (Se apilan en celulares para mayor comodidad táctil) */}
+                    {/* Botones de Acción */}
                     <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-3.5 sm:py-4 bg-gray-50 border-t border-gray-100">
                         <button 
                             type="button" 
@@ -270,7 +294,8 @@ const ModalAudifono = ({ isOpen, onClose, onSave, audifonoAEditar }) => {
                         </button>
                         <button 
                             type="submit" 
-                            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-sm font-medium text-white bg-terracota-500 hover:bg-terracota-600 rounded-lg transition-colors cursor-pointer text-center shadow-xs"
+                            disabled={!loadingPermisos && !tienePermiso('carga_audifonos')}
+                            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-sm font-medium text-white bg-terracota-500 hover:bg-terracota-600 rounded-lg transition-colors cursor-pointer text-center shadow-xs disabled:opacity-50"
                         >
                             {audifonoAEditar ? 'Guardar Cambios' : 'Guardar Audífono'}
                         </button>

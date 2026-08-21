@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase.js';
+import { usePermisos } from '../hooks/usePermisos';
 import ModalNuevoPaciente from '../components/Paciente/ModalNuevoPaciente.jsx';
 import ModalDetallePaciente from '../components/Paciente/ModalDetallePaciente.jsx';
 import ModalHistoriaClinica from '../components/Paciente/ModalHistoriaClinica.jsx';
 
-function Pacientes({ rolUsuario }) {
+function Pacientes() {
+    const { tienePermiso, loadingPermisos } = usePermisos();
+
     const [pacientes, setPacientes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [busqueda, setBusqueda] = useState('');
@@ -17,9 +20,6 @@ function Pacientes({ rolUsuario }) {
     // Estados para la Historia Clínica
     const [isHistoriaOpen, setIsHistoriaOpen] = useState(false);
     const [pacienteParaHistoria, setPacienteParaHistoria] = useState(null);
-
-    // Permisos según el rol
-    const puedeCrearEditarPacientes = rolUsuario === 'administrador' || rolUsuario === 'recepcionista';
 
     const obtenerPacientes = async () => {
         setLoading(true);
@@ -65,17 +65,20 @@ function Pacientes({ rolUsuario }) {
                     <h2 className="text-2xl font-bold text-gray-800">Gestión de Pacientes</h2>
                     <p className="text-sm text-gray-500">Administra la información clínica y de contacto de los pacientes.</p>
                 </div>
-                {puedeCrearEditarPacientes && (
-                    <button 
-                        onClick={() => {
-                            setPacienteAEditar(null);
-                            setIsModalOpen(true);
-                        }}
-                        className="w-full sm:w-auto bg-terracota-500 hover:bg-terracota-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm flex items-center justify-center space-x-2"
-                    >
-                        <span>+ Nuevo Paciente</span>
-                    </button>
-                )}
+                <button 
+                    onClick={() => {
+                        if (!loadingPermisos && !tienePermiso('carga_paciente')) {
+                            alert('No cuentas con permisos para registrar nuevos pacientes.');
+                            return;
+                        }
+                        setPacienteAEditar(null);
+                        setIsModalOpen(true);
+                    }}
+                    disabled={!loadingPermisos && !tienePermiso('carga_paciente')}
+                    className="w-full sm:w-auto bg-terracota-500 hover:bg-terracota-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <span>+ Nuevo Paciente</span>
+                </button>
             </div>
 
             {/* Buscador */}
@@ -241,17 +244,20 @@ function Pacientes({ rolUsuario }) {
                 isOpen={isDetalleOpen}
                 onClose={() => setIsDetalleOpen(false)}
                 paciente={pacienteSeleccionado}
-                onEditar={puedeCrearEditarPacientes ? (paciente) => {
+                onEditar={(paciente) => {
+                    if (!loadingPermisos && !tienePermiso('carga_paciente')) {
+                        alert('No cuentas con permisos para editar la información de los pacientes.');
+                        return;
+                    }
                     setPacienteAEditar(paciente);
                     setIsModalOpen(true);
-                } : null}
+                }}
             />
 
             <ModalHistoriaClinica 
                 isOpen={isHistoriaOpen}
                 onClose={() => setIsHistoriaOpen(false)}
                 paciente={pacienteParaHistoria}
-                rolUsuario={rolUsuario}
             />
         </div>
     );

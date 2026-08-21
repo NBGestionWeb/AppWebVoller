@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../config/supabase.js';
+import { usePermisos } from '../../hooks/usePermisos';
 
-function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
+function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
+    const { tienePermiso, loadingPermisos } = usePermisos();
+
     const [historias, setHistorias] = useState([]);
     const [profesionales, setProfesionales] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -20,12 +23,6 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
 
     // Filtros de búsqueda para historias antiguas
     const [filtroFecha, setFiltroFecha] = useState('');
-
-    // Permisos según el rol:
-    // - administrador: gestión total (puede crear, editar y eliminar historias)
-    // - profesional: historias clínicas (crear o editar)
-    // - recepcionista: sin acceso a crear, editar o eliminar historias clínicas (solo visualización)
-    const puedeGestionarHistorias = rolUsuario === 'administrador' || rolUsuario === 'profesional';
 
     // Formulario de nueva consulta o edición
     const [formData, setFormData] = useState({
@@ -114,7 +111,11 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
     };
 
     const handleEditarClick = (historia) => {
-        if (!puedeGestionarHistorias) return;
+        if (!tienePermiso('edicion_eliminacion_historias_clinicas')) {
+            alert('No cuentas con permisos para editar historias clínicas.');
+            return;
+        }
+
         setConsultaAEditar(historia);
         setFormData({
             profesional_id: historia.profesional_id || '',
@@ -134,9 +135,15 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!puedeGestionarHistorias) return;
         setError('');
         setExito('');
+
+        const permisoRequerido = consultaAEditar ? 'edicion_eliminacion_historias_clinicas' : 'carga_historias_clinicas';
+        if (!tienePermiso(permisoRequerido)) {
+            setError('No tienes los permisos necesarios para realizar esta acción.');
+            return;
+        }
+
         setGuardando(true);
 
         try {
@@ -192,7 +199,13 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
     };
 
     const confirmarEliminar = async () => {
-        if (!idAEliminar || !puedeGestionarHistorias) return;
+        if (!idAEliminar) return;
+        if (!tienePermiso('edicion_eliminacion_historias_clinicas')) {
+            alert('No cuentas con permisos para eliminar registros de la historia clínica.');
+            setIdAEliminar(null);
+            return;
+        }
+
         try {
             const { error } = await supabase
                 .from('historias_clinicas')
@@ -222,7 +235,7 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl border border-gray-100 overflow-hidden my-auto max-h-[90vh] flex flex-col">
                 
                 {/* Modal de confirmación de eliminación */}
-                {idAEliminar && puedeGestionarHistorias && (
+                {idAEliminar && (
                     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 max-w-sm w-full text-center space-y-4">
                             <div className="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
@@ -282,7 +295,9 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                             >
                                 Consultas Anteriores ({historias.length})
                             </button>
-                            {puedeGestionarHistorias && (
+                            
+                            {/* Botón de Nueva Consulta condicionado a 'carga_historias_clinicas' */}
+                            {!loadingPermisos && tienePermiso('carga_historias_clinicas') && (
                                 <button 
                                     onClick={() => {
                                         limpiarFormulario();
@@ -329,7 +344,7 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                                 <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4">
                                     <p className="text-gray-500 text-sm mb-1">No se encontraron registros de historia clínica.</p>
                                     <p className="text-xs text-gray-400">
-                                        {puedeGestionarHistorias ? 'Utiliza el botón de arriba para registrar la primera consulta.' : 'No hay registros disponibles.'}
+                                        Utiliza el botón de arriba para registrar la primera consulta.
                                     </p>
                                 </div>
                             ) : (
@@ -353,8 +368,8 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                                                         </h4>
                                                     </div>
                                                     
-                                                    {/* Botones de acción */}
-                                                    {puedeGestionarHistorias && (
+                                                    {/* Botones de acción condicionados */}
+                                                    {!loadingPermisos && tienePermiso('edicion_eliminacion_historias_clinicas') && (
                                                         <div className="flex items-center space-x-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200/40">
                                                             <button 
                                                                 onClick={() => handleEditarClick(h)}
@@ -433,7 +448,7 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente, rolUsuario }) {
                     )}
 
                     {/* VISTA 2: NUEVO / EDITAR CONSULTA */}
-                    {vista === 'nuevo' && puedeGestionarHistorias && (
+                    {vista === 'nuevo' && (
                         <form onSubmit={handleSubmit} className="space-y-5">
                             {error && (
                                 <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg text-sm text-red-700">

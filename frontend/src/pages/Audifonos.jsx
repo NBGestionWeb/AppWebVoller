@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
-import { supabase } from '../config/supabase'; // Asegúrate de que la ruta a tu cliente supabase sea correcta
+import toast from 'react-hot-toast';
+import { supabase } from '../config/supabase';
+import { usePermisos } from '../hooks/usePermisos';
 import ModalAudifono from '../components/Audifonos/ModalAudifono';
 
 const Audifonos = () => {
+    const { tienePermiso, loadingPermisos } = usePermisos();
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [audifonoAEditar, setAudifonoAEditar] = useState(null);
     const [filtroEstado, setFiltroEstado] = useState('Todos');
@@ -27,7 +31,6 @@ const Audifonos = () => {
         if (error) {
             console.error('Error al cargar audífonos:', error.message);
         } else {
-            // Mapeamos los datos para que sean fáciles de leer en la vista
             const datosMapeados = (data || []).map(item => ({
                 ...item,
                 paciente: item.pacientes ? `${item.pacientes.nombre} ${item.pacientes.apellido}` : 'Sin asignar',
@@ -41,7 +44,6 @@ const Audifonos = () => {
         fetchAudifonos();
     }, []);
 
-    // Función auxiliar para transformar de YYYY-MM-DD a DD/MM/YYYY para la vista
     const formatearFecha = (fechaStr) => {
         if (!fechaStr) return '';
         const partes = fechaStr.split('-');
@@ -52,14 +54,48 @@ const Audifonos = () => {
         return fechaStr;
     };
 
-    // Función para abrir el modal en modo edición
+    // Función para abrir el modal en modo edición con validación de permisos y aviso
     const handleEditClick = (audifono) => {
+        if (loadingPermisos) {
+            toast.loading('Cargando permisos, por favor espera...');
+            return;
+        }
+
+        if (!tienePermiso('edicion_eliminacion_audifonos')) {
+            Swal.fire({
+                title: 'Acceso Denegado',
+                text: 'No se puede editar porque no tiene los permisos necesarios.',
+                icon: 'warning',
+                confirmButtonColor: '#c86d51',
+                confirmButtonText: 'Entendido'
+            });
+            toast.error('No cuentas con permisos para editar audífonos.');
+            return;
+        }
+
         setAudifonoAEditar(audifono);
         setIsModalOpen(true);
     };
 
-    // Función para eliminar de Supabase
+    // Función para eliminar de Supabase con validación de permisos y aviso
     const handleDeleteClick = (id) => {
+        if (loadingPermisos) {
+            toast.loading('Cargando permisos, por favor espera...');
+            return;
+        }
+
+        if (!tienePermiso('edicion_eliminacion_audifonos')) {
+            Swal.fire({
+                title: 'Acceso Denegado',
+                text: 'No se puede eliminar porque no tiene los permisos necesarios.',
+                icon: 'warning',
+                confirmButtonColor: '#c86d51',
+                confirmButtonText: 'Entendido'
+            });
+            toast.error('No cuentas con permisos para eliminar audífonos.');
+            return;
+        }
+
         Swal.fire({
             title: '¿Estás seguro?',
             text: '¿Estás seguro de eliminar este audífono?',
@@ -92,17 +128,15 @@ const Audifonos = () => {
     };
 
     const handleSaveAudifono = async (nuevoAudifono) => {
-        // Normalizamos el tipo de operación para evitar conflictos con el check constraint de la BD
         let tipoOperacionLimpio = '';
         if (nuevoAudifono.tipo_operacion) {
             tipoOperacionLimpio = nuevoAudifono.tipo_operacion
                 .toLowerCase()
                 .trim()
                 .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, ''); // Quita tildes por si acaso (ej: "reparación" -> "reparacion")
+                .replace(/[\u0300-\u036f]/g, '');
         }
 
-        // Preparamos el objeto adaptado exactamente a las columnas de tu tabla en Supabase
         const objetoParaBD = {
             paciente_id: nuevoAudifono.paciente_id || null,
             modelo: nuevoAudifono.modelo,
@@ -116,7 +150,6 @@ const Audifonos = () => {
         };
 
         if (audifonoAEditar) {
-            // Actualizar existente en Supabase
             const { error } = await supabase
                 .from('audifonos')
                 .update(objetoParaBD)
@@ -128,7 +161,6 @@ const Audifonos = () => {
                 return;
             }
         } else {
-            // Crear nuevo en Supabase
             const { error } = await supabase
                 .from('audifonos')
                 .insert([objetoParaBD]);
@@ -140,19 +172,16 @@ const Audifonos = () => {
             }
         }
 
-        // Refrescamos los datos desde la base de datos y cerramos modal
         fetchAudifonos();
         setAudifonoAEditar(null);
         setIsModalOpen(false);
         Swal.fire('¡Éxito!', 'El audífono se guardó correctamente', 'success');
     };
 
-    // Filtrar audífonos según la pestaña seleccionada
     const audifonosFiltrados = filtroEstado === 'Todos' 
         ? audifonos 
         : audifonos.filter(a => a.estado && a.estado.toLowerCase() === filtroEstado.toLowerCase());
 
-    // Colores dinámicos para los estados
     const getBadgeEstado = (estado) => {
         const estadoLower = estado ? estado.toLowerCase() : '';
         switch (estadoLower) {
@@ -176,8 +205,20 @@ const Audifonos = () => {
                     <p className="text-sm text-gray-500">Administra el estado, números de serie y entregas de audífonos.</p>
                 </div>
                 <button 
-                    onClick={() => { setAudifonoAEditar(null); setIsModalOpen(true); }}
-                    className="w-full sm:w-auto bg-terracota-500 hover:bg-terracota-600 text-white font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+                    onClick={() => { 
+                        if (loadingPermisos) {
+                            toast.loading('Cargando permisos, por favor espera...');
+                            return;
+                        }
+                        if (!tienePermiso('carga_audifonos')) {
+                            toast.error('No cuentas con permisos para cargar audífonos.');
+                            return;
+                        }
+                        setAudifonoAEditar(null); 
+                        setIsModalOpen(true); 
+                    }}
+                    disabled={loadingPermisos}
+                    className="w-full sm:w-auto bg-terracota-500 hover:bg-terracota-600 text-white font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <span className="text-lg leading-none">+</span> Nuevo Audífono
                 </button>
@@ -200,11 +241,11 @@ const Audifonos = () => {
                 ))}
             </div>
 
-            {/* Contenedor Principal (Vista de Tarjetas para Móviles / Tabla para Escritorio) */}
+            {/* Contenedor Principal */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 {audifonosFiltrados.length > 0 ? (
                     <>
-                        {/* Versión Tarjetas para Móviles (< 768px) */}
+                        {/* Versión Tarjetas para Móviles */}
                         <div className="grid grid-cols-1 gap-4 p-4 md:hidden">
                             {audifonosFiltrados.map((item, index) => (
                                 <div key={item.id} className="bg-gray-50/60 border border-gray-200 rounded-xl p-4 space-y-3 shadow-xs">
@@ -249,13 +290,13 @@ const Audifonos = () => {
                                     <div className="flex justify-end gap-3 pt-3 border-t border-gray-200/60">
                                         <button 
                                             onClick={() => handleEditClick(item)} 
-                                            className="text-gray-700 hover:text-gray-900 font-medium text-sm px-3 py-1 bg-white border border-gray-200 rounded-lg shadow-2xs"
+                                            className="text-gray-700 hover:text-gray-900 font-medium text-sm px-3 py-1 bg-white border border-gray-200 rounded-lg shadow-xs cursor-pointer"
                                         >
                                             Editar
                                         </button>
                                         <button 
                                             onClick={() => handleDeleteClick(item.id)} 
-                                            className="text-red-600 hover:text-red-800 font-medium text-sm px-3 py-1 bg-white border border-red-100 rounded-lg shadow-2xs"
+                                            className="text-red-600 hover:text-red-800 font-medium text-sm px-3 py-1 bg-white border border-red-100 rounded-lg shadow-xs cursor-pointer"
                                         >
                                             Eliminar
                                         </button>
@@ -264,7 +305,7 @@ const Audifonos = () => {
                             ))}
                         </div>
 
-                        {/* Versión Tabla Tradicional para Escritorio (md en adelante) */}
+                        {/* Versión Tabla Tradicional para Escritorio */}
                         <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>

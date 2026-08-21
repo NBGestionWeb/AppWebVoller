@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../config/supabase.js';
+import { usePermisos } from '../../hooks/usePermisos';
 
 function ModalNuevoProfesional({ isOpen, onClose, onProfesionalGuardado, profesionalAEditar }) {
+    const { tienePermiso, loadingPermisos } = usePermisos();
+
     const [formData, setFormData] = useState({
         nombre: '',
         apellido: '',
@@ -55,6 +58,12 @@ function ModalNuevoProfesional({ isOpen, onClose, onProfesionalGuardado, profesi
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        if (!loadingPermisos && !tienePermiso('carga_profesionales')) {
+            setError('No cuentas con permisos para registrar o modificar profesionales.');
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -195,7 +204,8 @@ function ModalNuevoProfesional({ isOpen, onClose, onProfesionalGuardado, profesi
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-xs sm:text-sm bg-white"
                                 >
                                     <option value="">Seleccionar...</option>
-                                    <option value="Otorrinos">Otorrinos</option>
+                                    <option value="Fonoudiologo/a">Fonoudiologo/a</option>
+                                    <option value="Otorrino/a">Otorrino/a</option>
                                     <option value="Externos">Externos</option>
                                     <option value="Técnicos Völler">Técnicos Völler</option>
                                 </select>
@@ -220,7 +230,7 @@ function ModalNuevoProfesional({ isOpen, onClose, onProfesionalGuardado, profesi
                                     value={formData.telefono}
                                     onChange={handleChange}
                                     required
-                                    className="w-full px-3 py-2 border border-gray-300 সংশোধন-lg focus:ring-2 focus:ring-terracota-500 outline-none text-xs sm:text-sm rounded-lg"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-terracota-500 outline-none text-xs sm:text-sm"
                                     placeholder="Ej: 1155443322"
                                 />
                             </div>
@@ -249,7 +259,7 @@ function ModalNuevoProfesional({ isOpen, onClose, onProfesionalGuardado, profesi
                         </button>
                         <button 
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || (!loadingPermisos && !tienePermiso('carga_profesionales'))}
                             className="w-full sm:w-auto px-5 py-2.5 bg-terracota-500 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-terracota-600 transition-colors shadow-sm cursor-pointer disabled:opacity-50 text-center"
                         >
                             {loading ? 'Guardando...' : (profesionalAEditar ? 'Guardar Cambios' : 'Guardar Profesional')}

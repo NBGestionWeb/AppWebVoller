@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../config/supabase.js';
+import { usePermisos } from '../../hooks/usePermisos';
 
-function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
+function ModalDisponibilidad({ isOpen, onClose, profesional }) {
+    const { tienePermiso, loadingPermisos } = usePermisos();
+
     const [disponibilidad, setDisponibilidad] = useState({});
     const [loading, setLoading] = useState(false);
     const [guardando, setGuardando] = useState(false);
@@ -9,11 +12,6 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
     const [exito, setExito] = useState('');
 
     const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
-    // Permisos según el rol:
-    // - administrador: gestión total (modificar horarios)
-    // - recepcionista: solo lectura (ver horarios sin modificar)
-    const puedeGestionar = rolUsuario === 'administrador';
 
     useEffect(() => {
         if (isOpen && profesional) {
@@ -54,7 +52,6 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
     };
 
     const handleCheckboxChange = (dia) => {
-        if (!puedeGestionar) return;
         setDisponibilidad(prev => ({
             ...prev,
             [dia]: {
@@ -65,7 +62,6 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
     };
 
     const handleHoraChange = (dia, campo, valor) => {
-        if (!puedeGestionar) return;
         setDisponibilidad(prev => ({
             ...prev,
             [dia]: {
@@ -77,9 +73,14 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
 
     const handleGuardarTodo = async (e) => {
         e.preventDefault();
-        if (!puedeGestionar) return;
         setError('');
         setExito('');
+
+        if (!loadingPermisos && !tienePermiso('edicion_disponibilidad')) {
+            setError('No cuentas con permisos para modificar la disponibilidad de los profesionales.');
+            return;
+        }
+
         setGuardando(true);
 
         try {
@@ -147,7 +148,7 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
                 <div className="bg-terracota-500 px-5 sm:px-6 py-4 flex justify-between items-center text-white">
                     <div className="pr-2">
                         <h3 className="text-base sm:text-lg font-bold">
-                            {puedeGestionar ? 'Configurar Disponibilidad Semanal' : 'Disponibilidad Semanal'}
+                            Configurar Disponibilidad Semanal
                         </h3>
                         <p className="text-xs text-white/80 break-words">Dr./Lic. {profesional.nombre} {profesional.apellido} ({profesional.especialidad})</p>
                     </div>
@@ -178,9 +179,7 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
                     ) : (
                         <div className="space-y-3">
                             <p className="text-xs text-gray-500 mb-2">
-                                {puedeGestionar 
-                                    ? 'Selecciona los días que atiende el profesional y define sus rangos horarios:'
-                                    : 'Días y rangos horarios en los que atiende el profesional:'}
+                                Selecciona los días que atiende el profesional y define sus rangos horarios:
                             </p>
                             
                             {diasSemana.map((dia) => {
@@ -198,9 +197,8 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
                                             <input 
                                                 type="checkbox"
                                                 checked={configDia.activo}
-                                                disabled={!puedeGestionar}
                                                 onChange={() => handleCheckboxChange(dia)}
-                                                className="w-4 h-4 text-terracota-600 rounded border-gray-300 focus:ring-terracota-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
+                                                className="w-4 h-4 text-terracota-600 rounded border-gray-300 focus:ring-terracota-500 cursor-pointer shrink-0"
                                             />
                                             <span className={`font-semibold text-xs sm:text-sm ${configDia.activo ? 'text-gray-900' : 'text-gray-400'}`}>
                                                 {dia}
@@ -214,7 +212,7 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
                                                 <input 
                                                     type="time" 
                                                     value={configDia.hora_inicio}
-                                                    disabled={!puedeGestionar || !configDia.activo}
+                                                    disabled={!configDia.activo}
                                                     onChange={(e) => handleHoraChange(dia, 'hora_inicio', e.target.value)}
                                                     className="w-full sm:w-auto px-2.5 py-1.5 border border-gray-300 rounded-lg bg-white text-xs outline-none focus:ring-2 focus:ring-terracota-500 disabled:opacity-40 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                                 />
@@ -225,7 +223,7 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
                                                 <input 
                                                     type="time" 
                                                     value={configDia.hora_fin}
-                                                    disabled={!puedeGestionar || !configDia.activo}
+                                                    disabled={!configDia.activo}
                                                     onChange={(e) => handleHoraChange(dia, 'hora_fin', e.target.value)}
                                                     className="w-full sm:w-auto px-2.5 py-1.5 border border-gray-300 rounded-lg bg-white text-xs outline-none focus:ring-2 focus:ring-terracota-500 disabled:opacity-40 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                                 />
@@ -244,17 +242,15 @@ function ModalDisponibilidad({ isOpen, onClose, profesional, rolUsuario }) {
                             onClick={onClose}
                             className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer text-center"
                         >
-                            {puedeGestionar ? 'Cancelar' : 'Cerrar'}
+                            Cancelar
                         </button>
-                        {puedeGestionar && (
-                            <button 
-                                type="submit"
-                                disabled={loading || guardando}
-                                className="w-full sm:w-auto px-5 py-2.5 bg-terracota-500 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-terracota-600 transition-colors shadow-sm cursor-pointer disabled:opacity-50 text-center"
-                            >
-                                {guardando ? 'Guardando...' : 'Guardar Horarios'}
-                            </button>
-                        )}
+                        <button 
+                            type="submit"
+                            disabled={loading || guardando || (!loadingPermisos && !tienePermiso('edicion_disponibilidad'))}
+                            className="w-full sm:w-auto px-5 py-2.5 bg-terracota-500 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-terracota-600 transition-colors shadow-sm cursor-pointer disabled:opacity-50 text-center"
+                        >
+                            {guardando ? 'Guardando...' : 'Guardar Horarios'}
+                        </button>
                     </div>
 
                 </form>

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase.js';
+import { usePermisos } from '../hooks/usePermisos';
 import ModalNuevoProfesional from '../components/Profesional/ModalNuevoProfesional.jsx';
 import ModalDetalleProfesional from '../components/Profesional/ModalDetalleProfesional.jsx';
 import ModalDisponibilidad from '../components/Profesional/ModalDisponibilidad.jsx';
 
-function Profesionales({ rolUsuario }) {
+function Profesionales() {
+    const { tienePermiso, loadingPermisos } = usePermisos();
+
     const [profesionales, setProfesionales] = useState([]);
     const [loading, setLoading] = useState(true);
     const [busqueda, setBusqueda] = useState('');
@@ -16,11 +19,6 @@ function Profesionales({ rolUsuario }) {
     
     // Estado para el modal de disponibilidad
     const [isDisponibilidadOpen, setIsDisponibilidadOpen] = useState(false);
-
-    // Permisos según el rol:
-    // - administrador: gestión total (crear, editar, etc.)
-    // - recepcionista: solo lectura (ver listado y ficha)
-    const puedeCrearEditarProfesionales = rolUsuario === 'administrador';
 
     const obtenerProfesionales = async () => {
         setLoading(true);
@@ -66,17 +64,20 @@ function Profesionales({ rolUsuario }) {
                     <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Gestión de Profesionales</h2>
                     <p className="text-xs sm:text-sm text-gray-500">Administra los médicos, otorrinos, externos y técnicos del centro.</p>
                 </div>
-                {puedeCrearEditarProfesionales && (
-                    <button 
-                        onClick={() => {
-                            setProfesionalAEditar(null);
-                            setIsModalOpen(true);
-                        }}
-                        className="w-full sm:w-auto bg-terracota-500 hover:bg-terracota-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm flex items-center justify-center space-x-2 shrink-0"
-                    >
-                        <span>+ Nuevo Profesional</span>
-                    </button>
-                )}
+                <button 
+                    onClick={() => {
+                        if (!loadingPermisos && !tienePermiso('carga_profesionales')) {
+                            alert('No cuentas con permisos para registrar nuevos profesionales.');
+                            return;
+                        }
+                        setProfesionalAEditar(null);
+                        setIsModalOpen(true);
+                    }}
+                    disabled={!loadingPermisos && !tienePermiso('carga_profesionales')}
+                    className="w-full sm:w-auto bg-terracota-500 hover:bg-terracota-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm flex items-center justify-center space-x-2 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <span>+ Nuevo Profesional</span>
+                </button>
             </div>
 
             {/* Buscador adaptable */}
@@ -209,22 +210,22 @@ function Profesionales({ rolUsuario }) {
             </div>
 
             {/* Modales */}
-            {puedeCrearEditarProfesionales && (
-                <ModalNuevoProfesional 
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    onProfesionalGuardado={handleProfesionalGuardado}
-                    profesionalAEditar={profesionalAEditar}
-                />
-            )}
+            <ModalNuevoProfesional 
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onProfesionalGuardado={handleProfesionalGuardado}
+                profesionalAEditar={profesionalAEditar}
+            />
 
             <ModalDetalleProfesional 
                 isOpen={isDetalleOpen}
                 onClose={() => setIsDetalleOpen(false)}
                 profesional={profesionalSeleccionado}
-                rolUsuario={rolUsuario}
                 onEditar={(prof) => {
-                    if (!puedeCrearEditarProfesionales) return;
+                    if (!loadingPermisos && !tienePermiso('edicion_disponibilidad')) {
+                        alert('No cuentas con permisos para editar la información de los profesionales.');
+                        return;
+                    }
                     setProfesionalAEditar(prof);
                     setIsModalOpen(true);
                 }}
@@ -238,10 +239,9 @@ function Profesionales({ rolUsuario }) {
                 isOpen={isDisponibilidadOpen}
                 onClose={() => setIsDisponibilidadOpen(false)}
                 profesional={profesionalSeleccionado}
-                rolUsuario={rolUsuario}
             />
         </div>
     );
 }
 
-export default Profesionales; // O export default Profesionales según tu sintaxis habitual
+export default Profesionales;

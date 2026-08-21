@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../config/supabase.js';
+import { usePermisos } from '../../hooks/usePermisos';
 
 function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) {
+    const { tienePermiso, loadingPermisos } = usePermisos();
+
     const [profesionales, setProfesionales] = useState([]);
     const [profesionalesNoDisponibles, setProfesionalesNoDisponibles] = useState([]);
     
@@ -131,9 +134,43 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
         }
     };
 
+    const validarDisponibilidadHoraria = async (profId, fechaSeleccionada, horaSeleccionada) => {
+        const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const fechaObj = new Date(fechaSeleccionada + 'T00:00:00');
+        const nombreDia = dias[fechaObj.getDay()];
+
+        const { data, error } = await supabase
+            .from('disponibilidad_profesionales')
+            .select('*')
+            .eq('profesional_id', profId)
+            .eq('dia_semana', nombreDia)
+            .single();
+
+        if (error || !data) {
+            return { disponible: false, mensaje: `El profesional no atiende los días ${nombreDia}.` };
+        }
+
+        const horaInicio = data.hora_inicio.slice(0, 5);
+        const horaFin = data.hora_fin.slice(0, 5);
+
+        if (horaSeleccionada < horaInicio || horaSeleccionada >= horaFin) {
+            return { 
+                disponible: false, 
+                mensaje: `Fuera de horario de atención. El profesional atiende de ${horaInicio} a ${horaFin} hs.` 
+            };
+        }
+
+        return { disponible: true };
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMensajeAlerta(null);
+
+        if (!loadingPermisos && !tienePermiso('carga_turnos')) {
+            setMensajeAlerta({ texto: 'No cuentas con permisos para agendar nuevos turnos.', tipo: 'error' });
+            return;
+        }
 
         if (!pacienteEncontrado) {
             setMensajeAlerta({ texto: 'Debe validar un DNI de paciente existente antes de agendar.', tipo: 'error' });
@@ -161,6 +198,13 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                     texto: 'El profesional seleccionado no se encuentra disponible en esta fecha por licencia o vacaciones.', 
                     tipo: 'error' 
                 });
+                setLoading(false);
+                return;
+            }
+
+            const validacionHoraria = await validarDisponibilidadHoraria(profesionalId, fecha, hora);
+            if (!validacionHoraria.disponible) {
+                setMensajeAlerta({ texto: validacionHoraria.mensaje, tipo: 'error' });
                 setLoading(false);
                 return;
             }
@@ -377,7 +421,7 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                     <button 
                         type="submit" 
                         form="form-nuevo-turno"
-                        disabled={loading || !pacienteEncontrado}
+                        disabled={loading || !pacienteEncontrado || (!loadingPermisos && !tienePermiso('carga_turnos'))}
                         className="w-full sm:w-auto px-5 py-2 bg-terracota-500 text-white rounded-lg text-sm hover:bg-terracota-600 disabled:opacity-50 cursor-pointer font-medium text-center transition-colors shadow-sm"
                     >
                         {loading ? 'Guardando...' : 'Agendar Turno'}

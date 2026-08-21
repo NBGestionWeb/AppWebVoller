@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../config/supabase.js';
+import { usePermisos } from '../../hooks/usePermisos';
 
-function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbrirDisponibilidad, rolUsuario }) {
+function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbrirDisponibilidad }) {
+    const { tienePermiso, loadingPermisos } = usePermisos();
+
     const [licencias, setLicencias] = useState([]);
     const [tipoLicencia, setTipoLicencia] = useState('vacaciones');
     const [motivoLicencia, setMotivoLicencia] = useState('');
@@ -14,11 +17,6 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
 
     // Estado para manejar el modal de confirmación de eliminación personalizado
     const [idLicenciaAEliminar, setIdLicenciaAEliminar] = useState(null);
-
-    // Permisos según el rol:
-    // - administrador: puede crear/editar profesionales y gestionar licencias
-    // - recepcionista: solo lectura (ver ficha, horarios y licencias sin modificar)
-    const puedeGestionar = rolUsuario === 'administrador';
 
     useEffect(() => {
         if (isOpen && profesional?.id) {
@@ -49,9 +47,13 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
 
     const handleCrearLicencia = async (e) => {
         e.preventDefault();
-        if (!puedeGestionar) return;
         setMensajeAlerta(null);
         
+        if (!loadingPermisos && !tienePermiso('edicion_profesionales')) {
+            setMensajeAlerta({ texto: 'No cuentas con permisos para registrar licencias o vacaciones.', tipo: 'error' });
+            return;
+        }
+
         // Validación de fechas
         if (!fechaInicio || !fechaFin) {
             setMensajeAlerta({ texto: 'Por favor selecciona las fechas de inicio y fin.', tipo: 'error' });
@@ -101,7 +103,14 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
     };
 
     const confirmarEliminarLicencia = async () => {
-        if (!puedeGestionar || !idLicenciaAEliminar) return;
+        if (!idLicenciaAEliminar) return;
+
+        if (!loadingPermisos && !tienePermiso('edicion_profesionales')) {
+            setIdLicenciaAEliminar(null);
+            setMensajeAlerta({ texto: 'No cuentas con permisos para eliminar registros de licencias.', tipo: 'error' });
+            return;
+        }
+
         try {
             const { error } = await supabase
                 .from('eventos_calendario')
@@ -126,7 +135,7 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-gray-100 overflow-hidden my-4 sm:my-8 relative">
                 
                 {/* Modal de Confirmación Personalizado */}
-                {puedeGestionar && idLicenciaAEliminar && (
+                {idLicenciaAEliminar && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 max-w-sm w-full text-center space-y-4 animate-scaleUp">
                             <div className="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
@@ -254,67 +263,65 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                     <div className="border-t border-gray-100 pt-5">
                         <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">3. Licencias, Vacaciones y Ausencias</h4>
                         
-                        {/* Formulario para agregar licencia (Solo Administrador) */}
-                        {puedeGestionar && (
-                            <form onSubmit={handleCrearLicencia} className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3 mb-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
-                                        <select 
-                                            value={tipoLicencia}
-                                            onChange={(e) => setTipoLicencia(e.target.value)}
-                                            className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
-                                        >
-                                            <option value="vacaciones"> Vacaciones</option>
-                                            <option value="viaje"> Licencia / Viaje</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Motivo / Descripción</label>
-                                        <input 
-                                            type="text" 
-                                            placeholder="Ej. Vacaciones de invierno..."
-                                            value={motivoLicencia}
-                                            onChange={(e) => setMotivoLicencia(e.target.value)}
-                                            className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Desde *</label>
-                                        <input 
-                                            type="date" 
-                                            value={fechaInicio}
-                                            onChange={(e) => setFechaInicio(e.target.value)}
-                                            className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Hasta *</label>
-                                        <input 
-                                            type="date" 
-                                            value={fechaFin}
-                                            onChange={(e) => setFechaFin(e.target.value)}
-                                            className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end pt-1">
-                                    <button 
-                                        type="submit"
-                                        disabled={guardando}
-                                        className="w-full sm:w-auto bg-terracota-500 text-white px-4 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 text-center shadow-xs"
+                        {/* Formulario para agregar licencia */}
+                        <form onSubmit={handleCrearLicencia} className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3 mb-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+                                    <select 
+                                        value={tipoLicencia}
+                                        onChange={(e) => setTipoLicencia(e.target.value)}
+                                        className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
                                     >
-                                        {guardando ? 'Registrando...' : '+ Registrar Licencia / Vacación'}
-                                    </button>
+                                        <option value="vacaciones"> Vacaciones</option>
+                                        <option value="viaje"> Licencia / Viaje</option>
+                                    </select>
                                 </div>
-                            </form>
-                        )}
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Motivo / Descripción</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Ej. Vacaciones de invierno..."
+                                        value={motivoLicencia}
+                                        onChange={(e) => setMotivoLicencia(e.target.value)}
+                                        className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Desde *</label>
+                                    <input 
+                                        type="date" 
+                                        value={fechaInicio}
+                                        onChange={(e) => setFechaInicio(e.target.value)}
+                                        className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Hasta *</label>
+                                    <input 
+                                        type="date" 
+                                        value={fechaFin}
+                                        onChange={(e) => setFechaFin(e.target.value)}
+                                        className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white outline-none focus:ring-1 focus:ring-terracota-500"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end pt-1">
+                                <button 
+                                    type="submit"
+                                    disabled={guardando || (!loadingPermisos && !tienePermiso('edicion_profesionales'))}
+                                    className="w-full sm:w-auto bg-terracota-500 text-white px-4 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 text-center shadow-xs"
+                                >
+                                    {guardando ? 'Registrando...' : '+ Registrar Licencia / Vacación'}
+                                </button>
+                            </div>
+                        </form>
 
                         {/* Listado de Licencias */}
                         <div className="space-y-2">
@@ -338,15 +345,13 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
                                                         {fIniFormatted} al {fFinFormatted}
                                                     </span>
                                                 </div>
-                                                {puedeGestionar && (
-                                                    <button 
-                                                        type="button"
-                                                        onClick={() => setIdLicenciaAEliminar(lic.id)}
-                                                        className="text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded cursor-pointer self-end sm:self-center"
-                                                    >
-                                                        Eliminar
-                                                    </button>
-                                                )}
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setIdLicenciaAEliminar(lic.id)}
+                                                    className="text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded cursor-pointer self-end sm:self-center"
+                                                >
+                                                    Eliminar
+                                                </button>
                                             </div>
                                         );
                                     })}
@@ -358,19 +363,19 @@ function ModalDetalleProfesional({ isOpen, onClose, profesional, onEditar, onAbr
 
                 {/* Pie del Modal */}
                 <div className="bg-gray-50 px-4 sm:px-6 py-3 flex flex-col-reverse sm:flex-row justify-between items-center border-t border-gray-100 gap-2">
-                    {puedeGestionar ? (
-                        <button 
-                            onClick={() => {
-                                onClose();
-                                onEditar(profesional);
-                            }}
-                            className="w-full sm:w-auto px-4 py-2.5 bg-terracota-500 text-white rounded-lg text-xs font-medium hover:bg-terracota-600 transition-colors cursor-pointer text-center shadow-xs"
-                        >
-                            Editar Profesional
-                        </button>
-                    ) : (
-                        <div className="hidden sm:block"></div>
-                    )}
+                    <button 
+                        onClick={() => {
+                            if (!loadingPermisos && !tienePermiso('edicion_profesionales')) {
+                                setMensajeAlerta({ texto: 'No cuentas con permisos para editar la información de los profesionales.', tipo: 'error' });
+                                return;
+                            }
+                            onClose();
+                            onEditar(profesional);
+                        }}
+                        className="w-full sm:w-auto px-4 py-2.5 bg-terracota-500 text-white rounded-lg text-xs font-medium hover:bg-terracota-600 transition-colors cursor-pointer text-center shadow-xs"
+                    >
+                        Editar Profesional
+                    </button>
                     <button 
                         onClick={onClose}
                         className="w-full sm:w-auto px-4 py-2.5 bg-gray-800 text-white rounded-lg text-xs font-medium hover:bg-gray-700 transition-colors cursor-pointer text-center"

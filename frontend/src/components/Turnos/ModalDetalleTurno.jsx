@@ -1,20 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../config/supabase.js';
 
-function ModalDetalleTurno({ isOpen, onClose, turnoId, onTurnoActualizado, rolUsuario }) {
+function ModalDetalleTurno({ isOpen, onClose, turnoId, onTurnoActualizado }) {
     const [turno, setTurno] = useState(null);
     const [loading, setLoading] = useState(false);
     
     // Estado para manejar el modal de confirmación de eliminación personalizado
     const [confirmarEliminacion, setConfirmarEliminacion] = useState(false);
-
-    // Permisos según el rol:
-    // - administrador o recepcionista: pueden editar/gestionar estados de turnos
-    const puedeCrearEditarTurnos = rolUsuario === 'administrador' || rolUsuario === 'recepcionista';
-    
-    // Solo el administrador puede eliminar turnos
-    const peutEliminarTurnos = rolUsuario === 'administrador'; // (mantenido con lógica interna)
-    const puedeEliminarTurnos = rolUsuario === 'administrador';
 
     useEffect(() => {
         if (isOpen && turnoId) {
@@ -49,7 +41,6 @@ function ModalDetalleTurno({ isOpen, onClose, turnoId, onTurnoActualizado, rolUs
     };
 
     const cambiarEstado = async (nuevoEstado) => {
-        if (!puedeCrearEditarTurnos) return;
         try {
             const { error } = await supabase
                 .from('turnos')
@@ -66,7 +57,6 @@ function ModalDetalleTurno({ isOpen, onClose, turnoId, onTurnoActualizado, rolUs
     };
 
     const eliminarTurno = async () => {
-        if (!puedeEliminarTurnos) return;
         try {
             const { error } = await supabase
                 .from('turnos')
@@ -113,7 +103,7 @@ function ModalDetalleTurno({ isOpen, onClose, turnoId, onTurnoActualizado, rolUs
             <div className="bg-white rounded-2xl p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 relative my-auto">
                 
                 {/* Modal de confirmación personalizado integrado ocupando todo el modal de forma compacta */}
-                {confirmarEliminacion && puedeEliminarTurnos && (
+                {confirmarEliminacion && (
                     <div className="absolute inset-0 bg-white z-20 flex flex-col items-center justify-center p-5 sm:p-6 text-center animate-fadeIn">
                         <div className="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-xl font-bold mb-3 shadow-inner">
                             !
@@ -191,34 +181,30 @@ function ModalDetalleTurno({ isOpen, onClose, turnoId, onTurnoActualizado, rolUs
                             <p className="text-gray-700 text-xs sm:text-sm">{turno.motivo}</p>
                         </div>
 
-                        {puedeCrearEditarTurnos && (
-                            <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-gray-100">
-                                {turno.estado !== 'confirmado' && (
-                                    <button 
-                                        onClick={() => cambiarEstado('confirmado')}
-                                        className="w-full sm:flex-1 px-3 py-2.5 bg-green-600 text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-green-700 cursor-pointer shadow-xs transition-colors"
-                                    >
-                                        Confirmar
-                                    </button>
-                                )}
-                                {turno.estado !== 'cancelado' && (
-                                    <button 
-                                        onClick={() => cambiarEstado('cancelado')}
-                                        className="w-full sm:flex-1 px-3 py-2.5 bg-amber-600 text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-amber-700 cursor-pointer shadow-xs transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
-                                )}
-                                {puedeEliminarTurnos && (
-                                    <button 
-                                        onClick={() => setConfirmarEliminacion(true)}
-                                        className="w-full sm:w-auto px-4 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs sm:text-sm font-medium hover:bg-red-100 cursor-pointer transition-colors"
-                                    >
-                                        Eliminar
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                        <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-gray-100">
+                            {turno.estado !== 'confirmado' && (
+                                <button 
+                                    onClick={() => cambiarEstado('confirmado')}
+                                    className="w-full sm:flex-1 px-3 py-2.5 bg-green-600 text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-green-700 cursor-pointer shadow-xs transition-colors"
+                                >
+                                    Confirmar
+                                </button>
+                            )}
+                            {turno.estado !== 'cancelado' && (
+                                <button 
+                                    onClick={() => cambiarEstado('cancelado')}
+                                    className="w-full sm:flex-1 px-3 py-2.5 bg-amber-600 text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-amber-700 cursor-pointer shadow-xs transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                            )}
+                            <button 
+                                onClick={() => setConfirmarEliminacion(true)}
+                                className="w-full sm:w-auto px-4 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs sm:text-sm font-medium hover:bg-red-100 cursor-pointer transition-colors"
+                            >
+                                Eliminar
+                            </button>
+                        </div>
                     </div>
                 ) : (
                     <p className="text-center text-red-500 py-6 text-sm">No se encontró información del turno.</p>
