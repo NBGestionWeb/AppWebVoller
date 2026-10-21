@@ -29,7 +29,7 @@ function ModalRecordatorioWa({ isOpen, onClose, turno }) {
 
     // Mensaje predeterminado personalizable
     const [mensaje, setMensaje] = useState(
-        `Hola *${pacienteNombre}*, te escribimos desde el centro médico para recordarte tu turno programado para el *${fechaFormateada}* con ${profesionalNombre}. Por favor, responde *CONFIRMAR* para validar tu asistencia. ¡Te esperamos!`
+        `Hola *${pacienteNombre}*, te escribimos desde Voller Centro Audiologico para recordarte tu turno programado para el *${fechaFormateada}* con ${profesionalNombre}. Por favor, responde *CONFIRMAR* para validar tu asistencia. ¡Te esperamos!`
     );
 
     const telefonoPaciente = turno.pacientes?.telefono || '';

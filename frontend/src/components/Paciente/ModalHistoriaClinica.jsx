@@ -7,6 +7,9 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
 
     const [historias, setHistorias] = useState([]);
     const [profesionales, setProfesionales] = useState([]);
+    const [audifonosInfo, setAudifonosInfo] = useState(null);
+    const [laboratorioCount, setLaboratorioCount] = useState(0);
+
     const [loading, setLoading] = useState(false);
     const [guardando, setGuardando] = useState(false);
     const [error, setError] = useState('');
@@ -21,8 +24,9 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
     // Estado para confirmar eliminación
     const [idAEliminar, setIdAEliminar] = useState(null);
 
-    // Filtros de búsqueda para historias antiguas
-    const [filtroFecha, setFiltroFecha] = useState('');
+    // Filtros de búsqueda por rango de fechas (Desde / Hasta)
+    const [filtroDesde, setFiltroDesde] = useState('');
+    const [filtroHasta, setFiltroHasta] = useState('');
 
     // Formulario de nueva consulta o edición
     const [formData, setFormData] = useState({
@@ -32,17 +36,14 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
         examen_fisico: '',
         observaciones: '',
         es_audiologia: false,
-        od_via_aerea: '',
-        od_via_osea: '',
-        oi_via_aerea: '',
-        oi_via_osea: '',
-        logoaudiometria: ''
+        archivo_pdf: null
     });
 
     useEffect(() => {
         if (isOpen && paciente?.id) {
             cargarHistorias();
             cargarProfesionales();
+            cargarDatosPacienteAdicionales();
             setVista('lista');
             limpiarFormulario();
         }
@@ -57,11 +58,7 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
             examen_fisico: '',
             observaciones: '',
             es_audiologia: false,
-            od_via_aerea: '',
-            od_via_osea: '',
-            oi_via_aerea: '',
-            oi_via_osea: '',
-            logoaudiometria: ''
+            archivo_pdf: null
         });
         setError('');
         setExito('');
@@ -80,7 +77,9 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
                 .order('fecha_consulta', { ascending: false });
 
             if (error) throw error;
-            setHistorias(data || []);
+            // Inicializamos cada historia con su acordeón de detalle cerrado por defecto
+            const historiasConExpand = (data || []).map(h => ({ ...h, expandido: false }));
+            setHistorias(historiasConExpand);
         } catch (err) {
             console.error('Error al cargar historias clínicas:', err.message);
         } finally {
@@ -102,12 +101,45 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
         }
     };
 
+    const cargarDatosPacienteAdicionales = async () => {
+        try {
+            const { data: audifonosData } = await supabase
+                .from('audifonos')
+                .select('*')
+                .eq('paciente_id', paciente.id)
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (audifonosData && audifonosData.length > 0) {
+                setAudifonosInfo(audifonosData[0]);
+            } else {
+                setAudifonosInfo(null);
+            }
+
+            const { count: labCount } = await supabase
+                .from('laboratorio')
+                .select('*', { count: 'exact', head: true })
+                .eq('paciente_id', paciente.id);
+
+            setLaboratorioCount(labCount || 0);
+        } catch (err) {
+            console.error('Error al cargar datos adicionales del paciente:', err.message);
+        }
+    };
+
     const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value
-        }));
+        const { name, value, type, checked, files } = e.target;
+        if (type === 'file') {
+            setFormData(prev => ({
+                ...prev,
+                [name]: files[0] || null
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: type === 'checkbox' ? checked : value
+            }));
+        }
     };
 
     const handleEditarClick = (historia) => {
@@ -124,13 +156,30 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
             examen_fisico: historia.examen_fisico || '',
             observaciones: historia.observaciones || '',
             es_audiologia: historia.es_audiologia || false,
-            od_via_aerea: historia.datos_audiologia?.od_via_aerea || '',
-            od_via_osea: historia.datos_audiologia?.od_via_osea || '',
-            oi_via_aerea: historia.datos_audiologia?.oi_via_aerea || '',
-            oi_via_osea: historia.datos_audiologia?.oi_via_osea || '',
-            logoaudiometria: historia.datos_audiologia?.logoaudiometria || ''
+            archivo_pdf: null
         });
         setVista('nuevo');
+    };
+
+    const abrirPdfFirmado = async (rutaArchivo) => {
+        if (!rutaArchivo) return;
+        try {
+            const { data, error } = await supabase.storage
+                .from('estudios-clinicos')
+                .createSignedUrl(rutaArchivo, 60);
+
+            if (error) throw error;
+            if (data?.signedUrl) {
+                window.open(data.signedUrl, '_blank');
+            }
+        } catch (err) {
+            console.error('Error al generar enlace firmado:', err.message);
+            alert('No se pudo abrir el archivo PDF.');
+        }
+    };
+
+    const toggleExpandir = (id) => {
+        setHistorias(prev => prev.map(h => h.id === id ? { ...h, expandido: !h.expandido } : h));
     };
 
     const handleSubmit = async (e) => {
@@ -147,15 +196,23 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
         setGuardando(true);
 
         try {
+            let pdfPath = consultaAEditar?.datos_audiologia?.pdf_path || null;
+
+            if (formData.archivo_pdf) {
+                const archivo = formData.archivo_pdf;
+                const nombreArchivo = `${paciente.id}_${Date.now()}_${archivo.name}`;
+                
+                const { error: uploadError } = await supabase.storage
+                    .from('estudios-clinicos')
+                    .upload(nombreArchivo, archivo);
+
+                if (uploadError) throw uploadError;
+                pdfPath = nombreArchivo;
+            }
+
             let datosAudiologiaJson = null;
             if (formData.es_audiologia) {
-                datosAudiologiaJson = {
-                    od_via_aerea: formData.od_via_aerea,
-                    od_via_osea: formData.od_via_osea,
-                    oi_via_aerea: formData.oi_via_aerea,
-                    oi_via_osea: formData.oi_via_osea,
-                    logoaudiometria: formData.logoaudiometria
-                };
+                datosAudiologiaJson = { pdf_path: pdfPath };
             }
 
             const payload = {
@@ -223,9 +280,13 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
     };
 
     const historiasFiltradas = historias.filter(h => {
-        if (!filtroFecha) return true;
-        const fechaConsultaStr = h.fecha_consulta ? h.fecha_consulta.split('T')[0] : '';
-        return fechaConsultaStr === filtroFecha;
+        if (!h.fecha_consulta) return false;
+        const fechaConsultaStr = h.fecha_consulta.split('T')[0];
+
+        if (filtroDesde && fechaConsultaStr < filtroDesde) return false;
+        if (filtroHasta && fechaConsultaStr > filtroHasta) return false;
+
+        return true;
     });
 
     if (!isOpen || !paciente) return null;
@@ -280,10 +341,42 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
                     </button>
                 </div>
 
-                <div className="p-4 sm:p-6 overflow-y-auto text-sm flex-1">
+                <div className="p-4 sm:p-6 overflow-y-auto text-sm flex-1 space-y-5">
                     
-                    {/* Barra de Navegación Interna */}
-                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 pb-4 border-b border-gray-100 gap-3">
+                    {/* Tarjeta de Resumen General del Paciente */}
+                    <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                        <div className="space-y-1">
+                            <span className="font-bold text-gray-400 uppercase text-[10px] block">Estado de Audífonos</span>
+                            {audifonosInfo ? (
+                                <div>
+                                    <p className="font-semibold text-emerald-700">Sí posee (Adquirido)</p>
+                                    <p className="text-gray-600 text-[11px]">Modalidad: <span className="font-medium uppercase">{audifonosInfo.modalidad || 'Particular'}</span></p>
+                                    <p className="text-gray-500 text-[10px]">Fecha: {audifonosInfo.created_at ? audifonosInfo.created_at.split('T')[0] : 'N/D'}</p>
+                                </div>
+                            ) : (
+                                <p className="text-gray-500 italic">No registra audífonos adquiridos.</p>
+                            )}
+                        </div>
+
+                        <div className="space-y-1 sm:border-x sm:border-gray-200 sm:px-4">
+                            <span className="font-bold text-gray-400 uppercase text-[10px] block">Envíos a Laboratorio</span>
+                            <p className="font-semibold text-gray-800 text-sm">
+                                {laboratorioCount} {laboratorioCount === 1 ? 'envío registrado' : 'envíos registrados'}
+                            </p>
+                            <p className="text-gray-500 text-[11px]">Reparaciones o revisiones técnicas.</p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <span className="font-bold text-gray-400 uppercase text-[10px] block">Asistencias / Consultas</span>
+                            <p className="font-semibold text-gray-800 text-sm">
+                                {historias.length} {historias.length === 1 ? 'visita total' : 'visitas totales'}
+                            </p>
+                            <p className="text-gray-500 text-[11px]">Historial completo en el centro.</p>
+                        </div>
+                    </div>
+
+                    {/* Barra de Navegación Interna y Filtros por Rango de Fechas */}
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center pb-2 gap-3 border-b border-gray-100">
                         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
                             <button 
                                 onClick={() => setVista('lista')}
@@ -293,10 +386,9 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
                             >
-                                Consultas Anteriores ({historias.length})
+                                Historial de Consultas ({historias.length})
                             </button>
                             
-                            {/* Botón de Nueva Consulta condicionado a 'carga_historias_clinicas' */}
                             {!loadingPermisos && tienePermiso('carga_historias_clinicas') && (
                                 <button 
                                     onClick={() => {
@@ -315,18 +407,25 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
                         </div>
 
                         {vista === 'lista' && (
-                            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-                                <span className="text-xs text-gray-500">Filtrar por fecha:</span>
+                            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto bg-gray-50 p-2 rounded-xl border border-gray-200">
+                                <span className="text-xs text-gray-500 font-medium">Desde:</span>
                                 <input 
                                     type="date"
-                                    value={filtroFecha}
-                                    onChange={(e) => setFiltroFecha(e.target.value)}
-                                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs outline-none bg-white flex-1 sm:flex-none"
+                                    value={filtroDesde}
+                                    onChange={(e) => setFiltroDesde(e.target.value)}
+                                    className="px-2 py-1 border border-gray-300 rounded-lg text-xs outline-none bg-white"
                                 />
-                                {filtroFecha && (
+                                <span className="text-xs text-gray-500 font-medium">Hasta:</span>
+                                <input 
+                                    type="date"
+                                    value={filtroHasta}
+                                    onChange={(e) => setFiltroHasta(e.target.value)}
+                                    className="px-2 py-1 border border-gray-300 rounded-lg text-xs outline-none bg-white"
+                                />
+                               {(filtroDesde || filtroHasta) && (
                                     <button 
-                                        onClick={() => setFiltroFecha('')}
-                                        className="text-xs text-terracota-600 hover:underline cursor-pointer font-medium"
+                                        onClick={() => { setFiltroDesde(''); setFiltroHasta(''); }}
+                                        className="text-xs text-terracota-600 hover:underline cursor-pointer font-bold ml-1"
                                     >
                                         Limpiar
                                     </button>
@@ -342,9 +441,9 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
                                 <p className="text-center text-gray-500 py-12">Cargando registros históricos...</p>
                             ) : historiasFiltradas.length === 0 ? (
                                 <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4">
-                                    <p className="text-gray-500 text-sm mb-1">No se encontraron registros de historia clínica.</p>
+                                    <p className="text-gray-500 text-sm mb-1">No se encontraron registros de historia clínica en este rango de fechas.</p>
                                     <p className="text-xs text-gray-400">
-                                        Utiliza el botón de arriba para registrar la primera consulta.
+                                        Utiliza el botón de arriba para registrar la primera consulta o ajusta los filtros.
                                     </p>
                                 </div>
                             ) : (
@@ -357,7 +456,6 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
 
                                         return (
                                             <div key={h.id} className="bg-gray-50 rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-2xs space-y-3 relative">
-                                                {/* Cabecera de la tarjeta */}
                                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-200/60 pb-3 gap-2">
                                                     <div>
                                                         <span className="text-xs font-bold text-terracota-600 uppercase tracking-wider block">
@@ -368,26 +466,34 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
                                                         </h4>
                                                     </div>
                                                     
-                                                    {/* Botones de acción condicionados */}
-                                                    {!loadingPermisos && tienePermiso('edicion_eliminacion_historias_clinicas') && (
-                                                        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200/40">
-                                                            <button 
-                                                                onClick={() => handleEditarClick(h)}
-                                                                className="px-3 py-1.5 sm:py-1 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-lg text-xs font-medium shadow-2xs cursor-pointer transition-colors"
-                                                            >
-                                                                Editar
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => setIdAEliminar(h.id)}
-                                                                className="px-3 py-1.5 sm:py-1 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 rounded-lg text-xs font-medium shadow-2xs cursor-pointer transition-colors"
-                                                            >
-                                                                Eliminar
-                                                            </button>
-                                                        </div>
-                                                    )}
+                                                    <div className="flex items-center space-x-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200/40">
+                                                        {/* Botón para Ver Detalle / PDF */}
+                                                        <button 
+                                                            onClick={() => toggleExpandir(h.id)}
+                                                            className="px-3 py-1.5 sm:py-1 bg-terracota-50 border border-terracota-200 hover:bg-terracota-100 text-terracota-700 rounded-lg text-xs font-bold shadow-2xs cursor-pointer transition-colors"
+                                                        >
+                                                            {h.expandido ? 'Ocultar Detalle' : 'Ver Detalle'}
+                                                        </button>
+
+                                                        {!loadingPermisos && tienePermiso('edicion_eliminacion_historias_clinicas') && (
+                                                            <>
+                                                                <button 
+                                                                    onClick={() => handleEditarClick(h)}
+                                                                    className="px-3 py-1.5 sm:py-1 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-lg text-xs font-medium shadow-2xs cursor-pointer transition-colors"
+                                                                >
+                                                                    Editar
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => setIdAEliminar(h.id)}
+                                                                    className="px-3 py-1.5 sm:py-1 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 rounded-lg text-xs font-medium shadow-2xs cursor-pointer transition-colors"
+                                                                >
+                                                                    Eliminar
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
 
-                                                {/* Etiqueta de audiología y profesional */}
                                                 <div className="flex flex-wrap items-center gap-2 pt-1">
                                                     {h.es_audiologia && (
                                                         <span className="bg-teal-100 text-teal-800 px-2.5 py-1 rounded-full text-xs font-semibold">
@@ -395,48 +501,48 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
                                                         </span>
                                                     )}
                                                     <span className="bg-white px-3 py-1 rounded-lg border border-gray-200 text-xs font-medium text-gray-700">
-                                                        Dr./Lic. {h.profesionales ? `${h.profesionales.nombre} ${h.profesionales.apellido}` : 'No asignado'} 
+                                                        Dr./Lic. {h.profesionales ? `${h.profesionales.nombre} ${h.profesionales.apellido}` : 'No asignado'}
                                                         {h.profesionales?.especialidad ? ` (${h.profesionales.especialidad})` : ''}
                                                     </span>
                                                 </div>
 
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-1">
-                                                    {h.antecedentes && (
-                                                        <div className="bg-white p-3 rounded-xl border border-gray-100">
-                                                            <span className="font-semibold text-gray-500 block mb-1 uppercase text-[10px]">Antecedentes</span>
-                                                            <p className="text-gray-700">{h.antecedentes}</p>
-                                                        </div>
-                                                    )}
+                                                {/* CONTENIDO DESPLEGABLE (INFORMACIÓN DETALLADA Y PDF) */}
+                                                {h.expandido && (
+                                                    <div className="space-y-3 pt-2 border-t border-gray-200/60 animate-fadeIn">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-1">
+                                                            <div className="bg-white p-3 rounded-xl border border-gray-100">
+                                                                <span className="font-semibold text-gray-500 block mb-1 uppercase text-[10px]">Antecedentes</span>
+                                                                <p className="text-gray-700">{h.antecedentes || 'Sin antecedentes registrados.'}</p>
+                                                            </div>
 
-                                                    {h.examen_fisico && (
-                                                        <div className="bg-white p-3 rounded-xl border border-gray-100">
-                                                            <span className="font-semibold text-gray-500 block mb-1 uppercase text-[10px]">Examen Físico / Complementario</span>
-                                                            <p className="text-gray-700">{h.examen_fisico}</p>
+                                                            <div className="bg-white p-3 rounded-xl border border-gray-100">
+                                                                <span className="font-semibold text-gray-500 block mb-1 uppercase text-[10px]">Examen Físico / Complementario</span>
+                                                                <p className="text-gray-700">{h.examen_fisico || 'Sin examen físico registrado.'}</p>
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                </div>
 
-                                                {h.es_audiologia && h.datos_audiologia && (
-                                                    <div className="bg-teal-50/50 p-3.5 rounded-xl border border-teal-100 text-xs space-y-2">
-                                                        <span className="font-bold text-teal-900 uppercase text-[10px] tracking-wider block">Parámetros de Audiología</span>
-                                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-gray-700">
-                                                            <div><b>O. Derecho V.A:</b> {h.datos_audiologia.od_via_aerea || '-'} dB</div>
-                                                            <div><b>O. Derecho V.O:</b> {h.datos_audiologia.od_via_osea || '-'} dB</div>
-                                                            <div><b>O. Izquierdo V.A:</b> {h.datos_audiologia.oi_via_aerea || '-'} dB</div>
-                                                            <div><b>O. Izquierdo V.O:</b> {h.datos_audiologia.oi_via_osea || '-'} dB</div>
-                                                        </div>
-                                                        {h.datos_audiologia.logoaudiometria && (
-                                                            <div className="pt-1 border-t border-teal-200/40">
-                                                                <b>Logoaudiometria:</b> {h.datos_audiologia.logoaudiometria}
+                                                        {h.es_audiologia && h.datos_audiologia?.pdf_path && (
+                                                            <div className="bg-teal-50/50 p-3.5 rounded-xl border border-teal-100 text-xs flex items-center justify-between">
+                                                                <div>
+                                                                    <span className="font-bold text-teal-900 uppercase text-[10px] tracking-wider block">Estudio Adjunto</span>
+                                                                    <p className="text-teal-700 font-medium">Archivo PDF escaneado disponible</p>
+                                                                </div>
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={() => abrirPdfFirmado(h.datos_audiologia.pdf_path)}
+                                                                    className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                                                                >
+                                                                    Ver PDF 📄
+                                                                </button>
                                                             </div>
                                                         )}
-                                                    </div>
-                                                )}
 
-                                                {h.observaciones && (
-                                                    <div className="bg-white p-3 rounded-xl border border-gray-100 text-xs">
-                                                        <span className="font-semibold text-gray-500 block mb-1 uppercase text-[10px]">Observaciones del Profesional</span>
-                                                        <p className="text-gray-700">{h.observaciones}</p>
+                                                        {h.observaciones && (
+                                                            <div className="bg-white p-3 rounded-xl border border-gray-100 text-xs">
+                                                                <span className="font-semibold text-gray-500 block mb-1 uppercase text-[10px]">Observaciones del Profesional</span>
+                                                                <p className="text-gray-700">{h.observaciones}</p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -506,7 +612,7 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
                                             className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500 cursor-pointer"
                                         />
                                         <span className="font-semibold text-xs text-gray-800">
-                                            ¿Es una consulta / estudio de Audiología?
+                                            ¿Adjuntar estudio de Audiología (PDF)?
                                         </span>
                                     </label>
                                 </div>
@@ -551,67 +657,18 @@ function ModalHistoriaClinica({ isOpen, onClose, paciente }) {
                                 </div>
                             </div>
 
-                            {/* CAMPOS ESPECÍFICOS DE AUDIOLOGÍA */}
+                            {/* ADJUNTAR ARCHIVO PDF DE AUDIOLOGÍA */}
                             {formData.es_audiologia && (
-                                <div className="bg-teal-50/60 p-4 rounded-xl border border-teal-200 space-y-3 animate-fadeIn">
-                                    <h4 className="text-xs font-bold text-teal-900 uppercase tracking-wider">Parámetros Audiológicos</h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                        <div>
-                                            <label className="block text-[11px] font-medium text-teal-800 mb-1">Oído Derecho V.A. (dB)</label>
-                                            <input 
-                                                type="text"
-                                                name="od_via_aerea"
-                                                value={formData.od_via_aerea}
-                                                onChange={handleChange}
-                                                placeholder="Ej: 20 dB"
-                                                className="w-full px-2.5 py-1.5 bg-white border border-teal-300 rounded-lg text-xs outline-none"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] font-medium text-teal-800 mb-1">Oído Derecho V.O. (dB)</label>
-                                            <input 
-                                                type="text"
-                                                name="od_via_osea"
-                                                value={formData.od_via_osea}
-                                                onChange={handleChange}
-                                                placeholder="Ej: 15 dB"
-                                                className="w-full px-2.5 py-1.5 bg-white border border-teal-300 rounded-lg text-xs outline-none"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] font-medium text-teal-800 mb-1">Oído Izquierdo V.A. (dB)</label>
-                                            <input 
-                                                type="text"
-                                                name="oi_via_aerea"
-                                                value={formData.oi_via_aerea}
-                                                onChange={handleChange}
-                                                placeholder="Ej: 25 dB"
-                                                className="w-full px-2.5 py-1.5 bg-white border border-teal-300 rounded-lg text-xs outline-none"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] font-medium text-teal-800 mb-1">Oído Izquierdo V.O. (dB)</label>
-                                            <input 
-                                                type="text"
-                                                name="oi_via_osea"
-                                                value={formData.oi_via_osea}
-                                                onChange={handleChange}
-                                                placeholder="Ej: 20 dB"
-                                                className="w-full px-2.5 py-1.5 bg-white border border-teal-300 rounded-lg text-xs outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-medium text-teal-800 mb-1">Logoaudiometría / Observaciones del estudio</label>
-                                        <input 
-                                            type="text"
-                                            name="logoaudiometria"
-                                            value={formData.logoaudiometria}
-                                            onChange={handleChange}
-                                            placeholder="Porcentaje de discriminación, curvas..."
-                                            className="w-full px-2.5 py-1.5 bg-white border border-teal-300 rounded-lg text-xs outline-none"
-                                        />
-                                    </div>
+                                <div className="bg-teal-50/60 p-4 rounded-xl border border-teal-200 space-y-2 animate-fadeIn">
+                                    <h4 className="text-xs font-bold text-teal-900 uppercase tracking-wider">Adjuntar Estudio Escaneado (PDF)</h4>
+                                    <input 
+                                        type="file"
+                                        name="archivo_pdf"
+                                        accept="application/pdf"
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 bg-white border border-teal-300 rounded-xl text-xs cursor-pointer file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-teal-600 file:text-white hover:file:bg-teal-700"
+                                    />
+                                    <p className="text-[11px] text-teal-700 italic">Sube el archivo PDF con la audiometría / logoaudiometría escaneada del paciente.</p>
                                 </div>
                             )}
 

@@ -13,6 +13,10 @@ const Audifonos = () => {
     const [filtroEstado, setFiltroEstado] = useState('Todos');
     const [audifonos, setAudifonos] = useState([]);
 
+    // Estado para el modal de visualización de detalles completos
+    const [audifonoSeleccionado, setAudifonoSeleccionado] = useState(null);
+    const [isModalVerOpen, setIsModalVerOpen] = useState(false);
+
     // Cargar audífonos desde Supabase al montar el componente
     const fetchAudifonos = async () => {
         const { data, error } = await supabase
@@ -54,7 +58,6 @@ const Audifonos = () => {
         return fechaStr;
     };
 
-    // Función para abrir el modal en modo edición con validación de permisos y aviso
     const handleEditClick = (audifono) => {
         if (loadingPermisos) {
             toast.loading('Cargando permisos, por favor espera...');
@@ -77,7 +80,6 @@ const Audifonos = () => {
         setIsModalOpen(true);
     };
 
-    // Función para eliminar de Supabase con validación de permisos y aviso
     const handleDeleteClick = (id) => {
         if (loadingPermisos) {
             toast.loading('Cargando permisos, por favor espera...');
@@ -128,25 +130,17 @@ const Audifonos = () => {
     };
 
     const handleSaveAudifono = async (nuevoAudifono) => {
-        let tipoOperacionLimpio = '';
-        if (nuevoAudifono.tipo_operacion) {
-            tipoOperacionLimpio = nuevoAudifono.tipo_operacion
-                .toLowerCase()
-                .trim()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '');
-        }
-
         const objetoParaBD = {
             paciente_id: nuevoAudifono.paciente_id || null,
             modelo: nuevoAudifono.modelo,
-            tipo_operacion: tipoOperacionLimpio,
-            marca: nuevoAudifono.marca,
+            tipo_operacion: nuevoAudifono.tipo_operacion,
+            modalidad_entrega: nuevoAudifono.modalidad_entrega || null,
             tipo: nuevoAudifono.tipo,
             serie: nuevoAudifono.serie,
             oido: nuevoAudifono.oido,
             estado: nuevoAudifono.estado ? nuevoAudifono.estado.toLowerCase().trim() : 'pendiente',
-            fecha_entrega: nuevoAudifono.fechaEntrega ? new Date(nuevoAudifono.fechaEntrega).toISOString() : null
+            fecha_entrega: nuevoAudifono.fechaEntrega ? new Date(nuevoAudifono.fechaEntrega).toISOString() : null,
+            reparaciones: nuevoAudifono.reparaciones || []
         };
 
         if (audifonoAEditar) {
@@ -202,7 +196,7 @@ const Audifonos = () => {
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-semibold text-gray-800">Gestión de Audífonos</h2>
-                    <p className="text-sm text-gray-500">Administra el estado, números de serie y entregas de audífonos.</p>
+                    <p className="text-sm text-gray-500">Administra el estado, números de serie, entregas y reparaciones de audífonos.</p>
                 </div>
                 <button 
                     onClick={() => { 
@@ -261,33 +255,24 @@ const Audifonos = () => {
 
                                     <div className="grid grid-cols-2 gap-2 text-sm border-t border-gray-200/60 pt-3">
                                         <div>
-                                            <span className="text-xs text-gray-500 block">Modelo / Marca</span>
+                                            <span className="text-xs text-gray-500 block">Modelo</span>
                                             <span className="font-medium text-gray-800">{item.modelo}</span>
-                                            <span className="text-xs text-gray-500 block">{item.marca}</span>
                                         </div>
                                         <div>
-                                            <span className="text-xs text-gray-500 block">Tipo / Serie</span>
-                                            <div className="flex items-center gap-1.5 mt-0.5">
-                                                <span className="bg-gray-200/80 text-gray-700 px-1.5 py-0.5 rounded text-xs font-medium">
-                                                    {item.tipo}
-                                                </span>
-                                                <span className="text-xs text-gray-600 font-mono">{item.serie}</span>
-                                            </div>
+                                            <span className="text-xs text-gray-500 block">Operación</span>
+                                            <span className="font-medium text-terracota-600">
+                                                {item.tipo_operacion} {item.modalidad_entrega ? `(${item.modalidad_entrega})` : ''}
+                                            </span>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-2 text-sm border-t border-gray-200/60 pt-3">
-                                        <div>
-                                            <span className="text-xs text-gray-500 block">Oído</span>
-                                            <span className="text-gray-700 font-medium">{item.oido}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-xs text-gray-500 block">F. Entrega</span>
-                                            <span className="text-gray-700 font-medium">{formatearFecha(item.fechaEntrega) || 'No especificada'}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-end gap-3 pt-3 border-t border-gray-200/60">
+                                    <div className="flex justify-end gap-2 pt-3 border-t border-gray-200/60">
+                                        <button 
+                                            onClick={() => { setAudifonoSeleccionado(item); setIsModalVerOpen(true); }}
+                                            className="text-terracota-600 hover:text-terracota-700 font-medium text-sm px-3 py-1 bg-terracota-50 border border-terracota-200 rounded-lg shadow-xs cursor-pointer"
+                                        >
+                                            Ver
+                                        </button>
                                         <button 
                                             onClick={() => handleEditClick(item)} 
                                             className="text-gray-700 hover:text-gray-900 font-medium text-sm px-3 py-1 bg-white border border-gray-200 rounded-lg shadow-xs cursor-pointer"
@@ -312,10 +297,11 @@ const Audifonos = () => {
                                     <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm font-semibold">
                                         <th className="py-3 px-6">#</th>
                                         <th className="py-3 px-6">Paciente</th>
-                                        <th className="py-3 px-6">Modelo / Marca</th>
+                                        <th className="py-3 px-6">Modelo</th>
+                                        <th className="py-3 px-6">Operación</th>
                                         <th className="py-3 px-6">Tipo / Serie</th>
                                         <th className="py-3 px-6">Oído</th>
-                                        <th className="py-3 px-6">F. Entrega</th>
+                                        <th className="py-3 px-6">Fecha</th>
                                         <th className="py-3 px-6">Estado</th>
                                         <th className="py-3 px-6 text-end">Acciones</th>
                                     </tr>
@@ -325,9 +311,12 @@ const Audifonos = () => {
                                         <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
                                             <td className="py-4 px-6 text-gray-500">{index + 1}</td>
                                             <td className="py-4 px-6 font-medium text-gray-800">{item.paciente}</td>
+                                            <td className="py-4 px-6 font-medium text-gray-800">{item.modelo}</td>
                                             <td className="py-4 px-6">
-                                                <div className="font-medium text-gray-800">{item.modelo}</div>
-                                                <div className="text-xs text-gray-500">{item.marca}</div>
+                                                <span className="font-semibold text-terracota-600">{item.tipo_operacion}</span>
+                                                {item.modalidad_entrega && (
+                                                    <span className="block text-xs text-gray-500">{item.modalidad_entrega}</span>
+                                                )}
                                             </td>
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-2">
@@ -345,6 +334,13 @@ const Audifonos = () => {
                                                 </span>
                                             </td>
                                             <td className="py-4 px-6 text-end space-x-2">
+                                                <button 
+                                                    onClick={() => { setAudifonoSeleccionado(item); setIsModalVerOpen(true); }}
+                                                    className="text-terracota-600 hover:text-terracota-800 font-medium cursor-pointer p-1 bg-terracota-50 px-2.5 py-1 rounded-lg border border-terracota-200"
+                                                    title="Ver información completa"
+                                                >
+                                                    Ver
+                                                </button>
                                                 <button 
                                                     onClick={() => handleEditClick(item)} 
                                                     className="text-gray-600 hover:text-gray-900 font-medium cursor-pointer p-1" 
@@ -380,6 +376,106 @@ const Audifonos = () => {
                 onSave={handleSaveAudifono}
                 audifonoAEditar={audifonoAEditar}
             /> 
+
+            {/* MODAL DE VISUALIZACIÓN DE DETALLES Y LABORATORIO */}
+            {isModalVerOpen && audifonoSeleccionado && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-gray-100 my-auto animate-in fade-in zoom-in duration-200">
+                        <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 bg-terracota-500 text-white">
+                            <h3 className="text-base font-bold">Detalle del Dispositivo / Audífono</h3>
+                            <button 
+                                onClick={() => setIsModalVerOpen(false)}
+                                className="text-white/80 hover:text-white font-bold text-xl cursor-pointer"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto text-sm">
+                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-1">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase">Paciente Asignado</span>
+                                <p className="font-semibold text-gray-800 text-base">{audifonoSeleccionado.paciente}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Modelo / Marca</span>
+                                    <p className="font-medium text-gray-800">{audifonoSeleccionado.modelo}</p>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Tipo de Operación</span>
+                                    <p className="font-medium text-terracota-600">
+                                        {audifonoSeleccionado.tipo_operacion} 
+                                        {audifonoSeleccionado.modalidad_entrega ? ` (${audifonoSeleccionado.modalidad_entrega})` : ''}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Tipo</span>
+                                    <p className="font-medium text-gray-800">{audifonoSeleccionado.tipo}</p>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Nº de Serie</span>
+                                    <p className="font-mono text-gray-800">{audifonoSeleccionado.serie}</p>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Oído</span>
+                                    <p className="font-medium text-gray-800">{audifonoSeleccionado.oido}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Fecha de Registro</span>
+                                    <p className="font-medium text-gray-800">{formatearFecha(audifonoSeleccionado.fechaEntrega) || 'No especificada'}</p>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Estado Actual</span>
+                                    <p className="font-medium capitalize text-gray-800">{audifonoSeleccionado.estado}</p>
+                                </div>
+                            </div>
+
+                            {/* HISTORIAL DE REPARACIONES / LABORATORIO */}
+                            <div className="border-t border-gray-200 pt-3 space-y-2">
+                                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">
+                                    🛠️ Historial de Envíos a Laboratorio ({audifonoSeleccionado.reparaciones?.length || 0})
+                                </h4>
+
+                                {(!audifonoSeleccionado.reparaciones || audifonoSeleccionado.reparaciones.length === 0) ? (
+                                    <p className="text-gray-400 text-xs italic bg-gray-50 p-3 rounded-xl border border-dashed border-gray-200 text-center">
+                                        Este audífono no registra envíos a laboratorio.
+                                    </p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {audifonoSeleccionado.reparaciones.map((rep, rIdx) => (
+                                            <div key={rIdx} className="bg-amber-50/60 p-3 rounded-xl border border-amber-200 text-xs space-y-1">
+                                                <div className="flex justify-between font-bold text-amber-900 border-b border-amber-200 pb-1">
+                                                    <span>Envío #{rIdx + 1}</span>
+                                                    <span>{rep.costo ? `Costo: $${rep.costo}` : 'Sin costo'}</span>
+                                                </div>
+                                                <p className="text-gray-700"><b>Fecha de Envío:</b> {formatearFecha(rep.fecha_envio) || 'N/D'}</p>
+                                                <p className="text-gray-700"><b>Fecha de Devolución:</b> {formatearFecha(rep.fecha_devolucion) || 'Pendiente'}</p>
+                                                <p className="text-gray-700"><b>Informe del Laboratorio:</b> {rep.informe || 'Sin informe registrado'}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 px-5 py-3 border-t border-gray-100 flex justify-end">
+                            <button 
+                                onClick={() => setIsModalVerOpen(false)}
+                                className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                            >
+                                Cerrar Ventana
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -19,6 +19,9 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
     const [fecha, setFecha] = useState('');
     const [hora, setHora] = useState('09:00');
     
+    // Estado para permitir excepciones en días Sábados
+    const [permitirSabado, setPermitirSabado] = useState(false);
+    
     const [motivo, setMotivo] = useState('');
     const [loading, setLoading] = useState(false);
     const [mensajeAlerta, setMensajeAlerta] = useState(null);
@@ -39,6 +42,7 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
             setPacienteEncontrado(null);
             setProfesionalId('');
             setMotivo('');
+            setPermitirSabado(false);
             cargarDatosAuxiliares(fechaActual);
             setMensajeAlerta(null);
         }
@@ -47,8 +51,32 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
     useEffect(() => {
         if (fecha && profesionales.length > 0) {
             verificarDisponibilidadProfesionales(fecha);
+            validarDiaFinDeSemana(fecha);
         }
-    }, [fecha, profesionales]);
+    }, [fecha, profesionales, permitirSabado]);
+
+    const validarDiaFinDeSemana = (fechaStr) => {
+        if (!fechaStr) return;
+        // Creamos la fecha localmente para evitar desfases horarios
+        const [anio, mes, dia] = fechaStr.split('-');
+        const fechaObj = new Date(anio, mes - 1, dia);
+        const diaSemana = fechaObj.getDay(); // 0 = Domingo, 6 = Sábado
+
+        if (diaSemana === 0) {
+            setMensajeAlerta({ 
+                texto: 'Los días domingo están bloqueados para evitar errores en la agenda. No se pueden dar turnos este día.', 
+                tipo: 'error' 
+            });
+        } else if (diaSemana === 6 && !permitirSabado) {
+            setMensajeAlerta({ 
+                texto: 'Los días sábado se encuentran bloqueados por defecto. Si hay profesionales asignados, habilite la casilla de excepción abajo.', 
+                tipo: 'error' 
+            });
+        } else {
+            // Si es un día hábil o el sábado fue permitido mediante la excepción, limpiamos la alerta de fin de semana
+            setMensajeAlerta(null);
+        }
+    };
 
     const cargarDatosAuxiliares = async (fechaConsulta) => {
         try {
@@ -136,7 +164,8 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
 
     const validarDisponibilidadHoraria = async (profId, fechaSeleccionada, horaSeleccionada) => {
         const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-        const fechaObj = new Date(fechaSeleccionada + 'T00:00:00');
+        const [anio, mes, dia] = fechaSeleccionada.split('-');
+        const fechaObj = new Date(anio, mes - 1, dia);
         const nombreDia = dias[fechaObj.getDay()];
 
         const { data, error } = await supabase
@@ -167,6 +196,20 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
         e.preventDefault();
         setMensajeAlerta(null);
 
+        // Validación final por si intentan enviar en fin de semana bloqueado
+        const [anio, mes, dia] = fecha.split('-');
+        const fechaObj = new Date(anio, mes - 1, dia);
+        const diaSemana = fechaObj.getDay();
+
+        if (diaSemana === 0) {
+            setMensajeAlerta({ texto: 'No se pueden agendar turnos los días domingo.', tipo: 'error' });
+            return;
+        }
+        if (diaSemana === 6 && !permitirSabado) {
+            setMensajeAlerta({ texto: 'Los días sábado están bloqueados. Habilite la excepción si hay profesionales disponibles.', tipo: 'error' });
+            return;
+        }
+
         if (!loadingPermisos && !tienePermiso('carga_turnos')) {
             setMensajeAlerta({ texto: 'No cuentas con permisos para agendar nuevos turnos.', tipo: 'error' });
             return;
@@ -184,6 +227,7 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
 
         setLoading(true);
         try {
+            // 1. Verificar licencias o vacaciones del profesional
             const { data: licencias, error: errLicencias } = await supabase
                 .from('eventos_calendario')
                 .select('*')
@@ -202,6 +246,7 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                 return;
             }
 
+            // 2. Verificar disponibilidad horaria semanal del profesional
             const validacionHoraria = await validarDisponibilidadHoraria(profesionalId, fecha, hora);
             if (!validacionHoraria.disponible) {
                 setMensajeAlerta({ texto: validacionHoraria.mensaje, tipo: 'error' });
@@ -210,6 +255,24 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
             }
 
             const fechaHoraCompleta = `${fecha}T${hora}:00`;
+
+            // 3. Verificar si el profesional ya tiene un turno asignado con otro paciente en este horario
+            const { data: turnosExistentes, error: errTurnosExistentes } = await supabase
+                .from('turnos')
+                .select('id')
+                .eq('profesional_id', profesionalId)
+                .eq('fecha_hora', fechaHoraCompleta);
+
+            if (errTurnosExistentes) throw errTurnosExistentes;
+
+            if (turnosExistentes && turnosExistentes.length > 0) {
+                setMensajeAlerta({ 
+                    texto: 'El profesional ya tiene un turno asignado con otro paciente en esta fecha y horario.', 
+                    tipo: 'error' 
+                });
+                setLoading(false);
+                return;
+            }
 
             const nuevoTurno = {
                 paciente_id: pacienteEncontrado.id,
@@ -233,6 +296,12 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
     };
 
     if (!isOpen) return null;
+
+    // Evaluamos si el día seleccionado es sábado para mostrar u ocultar la casilla de excepción
+    const [anioSel, mesSel, diaSel] = fecha ? fecha.split('-') : [0, 0, 0];
+    const esSabadoSeleccionado = fecha ? new Date(anioSel, mesSel - 1, diaSel).getDay() === 6 : false;
+    const esDomingoSeleccionado = fecha ? new Date(anioSel, mesSel - 1, diaSel).getDay() === 0 : false;
+    const turnoBloqueadoPorFinDeSemana = esDomingoSeleccionado || (esSabadoSeleccionado && !permitirSabado);
 
     const horasDisponibles = [
         '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', 
@@ -277,6 +346,49 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                     )}
 
                     <form onSubmit={handleSubmit} id="form-nuevo-turno" className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Fecha *</label>
+                                <input 
+                                    type="date" 
+                                    className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-terracota-500 bg-white"
+                                    value={fecha}
+                                    onChange={(e) => setFecha(e.target.value)}
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Hora (9 a 19 hs) *</label>
+                                <select 
+                                    className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-terracota-500"
+                                    value={hora}
+                                    onChange={(e) => setHora(e.target.value)}
+                                    required
+                                >
+                                    {horasDisponibles.map(h => (
+                                        <option key={h} value={h}>{h} hs</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Opción de excepción para Sábados */}
+                        {esSabadoSeleccionado && (
+                            <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-center space-x-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="excepcionSabado"
+                                    checked={permitirSabado}
+                                    onChange={(e) => setPermitirSabado(e.target.checked)}
+                                    className="rounded border-gray-300 text-terracota-600 focus:ring-terracota-500 h-4 w-4 cursor-pointer"
+                                />
+                                <label htmlFor="excepcionSabado" className="text-xs font-medium text-amber-900 cursor-pointer">
+                                    Permitir atención en día Sábado (excepción por profesionales activos)
+                                </label>
+                            </div>
+                        )}
+
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">DNI del Paciente *</label>
                             <div className="flex flex-col sm:flex-row gap-2">
@@ -349,33 +461,6 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                             </select>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Fecha *</label>
-                                <input 
-                                    type="date" 
-                                    className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-terracota-500 bg-white"
-                                    value={fecha}
-                                    onChange={(e) => setFecha(e.target.value)}
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Hora (9 a 19 hs) *</label>
-                                <select 
-                                    className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-terracota-500"
-                                    value={hora}
-                                    onChange={(e) => setHora(e.target.value)}
-                                    required
-                                >
-                                    {horasDisponibles.map(h => (
-                                        <option key={h} value={h}>{h} hs</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
                         <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 text-xs space-y-1.5">
                             <span className="font-semibold text-amber-900 block flex items-center gap-1">
                                 <span>⚠️ Profesionales ausentes en esta fecha:</span>
@@ -421,7 +506,7 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                     <button 
                         type="submit" 
                         form="form-nuevo-turno"
-                        disabled={loading || !pacienteEncontrado || (!loadingPermisos && !tienePermiso('carga_turnos'))}
+                        disabled={loading || turnoBloqueadoPorFinDeSemana || !pacienteEncontrado || (!loadingPermisos && !tienePermiso('carga_turnos'))}
                         className="w-full sm:w-auto px-5 py-2 bg-terracota-500 text-white rounded-lg text-sm hover:bg-terracota-600 disabled:opacity-50 cursor-pointer font-medium text-center transition-colors shadow-sm"
                     >
                         {loading ? 'Guardando...' : 'Agendar Turno'}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../config/supabase.js';
 import { usePermisos } from '../../hooks/usePermisos';
+import Swal from 'sweetalert2';
 
 function ModalNuevoProfesional({ isOpen, onClose, onProfesionalGuardado, profesionalAEditar }) {
     const { tienePermiso, loadingPermisos } = usePermisos();
@@ -18,6 +19,7 @@ function ModalNuevoProfesional({ isOpen, onClose, onProfesionalGuardado, profesi
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [confirmarEliminacion, setConfirmarEliminacion] = useState(false);
 
     useEffect(() => {
         if (profesionalAEditar) {
@@ -44,6 +46,7 @@ function ModalNuevoProfesional({ isOpen, onClose, onProfesionalGuardado, profesi
             });
         }
         setError('');
+        setConfirmarEliminacion(false);
     }, [profesionalAEditar, isOpen]);
 
     if (!isOpen) return null;
@@ -106,16 +109,101 @@ function ModalNuevoProfesional({ isOpen, onClose, onProfesionalGuardado, profesi
         }
     };
 
+    const handleEliminar = async () => {
+        if (!loadingPermisos && !tienePermiso('carga_profesionales')) {
+            setError('No cuentas con permisos para eliminar profesionales.');
+            setConfirmarEliminacion(false);
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // 1. Verificar si el profesional tiene turnos activos o vinculados
+            const { data: turnosAsociados, error: errTurnos } = await supabase
+                .from('turnos')
+                .select('id, estado')
+                .eq('profesional_id', profesionalAEditar.id);
+
+            if (errTurnos) throw errTurnos;
+
+            const turnosActivos = (turnosAsociados || []).filter(t => t.estado !== 'cancelado');
+
+            if (turnosActivos.length > 0) {
+                // 2. Si tiene turnos activos, cambiamos su estado a "Inactivo"
+                const { error: errUpdate } = await supabase
+                    .from('profesionales')
+                    .update({ estado: 'Inactivo' })
+                    .eq('id', profesionalAEditar.id);
+
+                if (errUpdate) throw errUpdate;
+
+                setConfirmarEliminacion(false);
+                
+                // Alerta con SweetAlert2 integrada al estilo de la app
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Acción limitada',
+                    text: 'El profesional cuenta con turnos activos asignados. No se puede eliminar físicamente, por lo que su estado se ha cambiado automáticamente a "Inactivo" hasta que se cancelen o reasignen dichos turnos.',
+                    confirmButtonColor: '#C05C4B'
+                });
+            } else {
+                // 3. Si no tiene turnos activos, procedemos a borrarlo
+                const { error: errDelete } = await supabase
+                    .from('profesionales')
+                    .delete()
+                    .eq('id', profesionalAEditar.id);
+
+                if (errDelete) throw errDelete;
+            }
+
+            window.location.reload();
+        } catch (err) {
+            setError(err.message || 'Ocurrió un error al procesar la solicitud.');
+            setConfirmarEliminacion(false);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl border border-gray-100 overflow-hidden my-4 sm:my-8 relative">
                 
+                {/* Modal de confirmación de eliminación personalizado superpuesto */}
+                {confirmarEliminacion && (
+                    <div className="absolute inset-0 bg-white z-20 flex flex-col items-center justify-center p-6 text-center animate-fadeIn">
+                        <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold mb-3 shadow-inner">
+                            !
+                        </div>
+                        <h4 className="font-bold text-gray-800 text-base sm:text-lg mb-1">¿Deseas dar de baja o eliminar este profesional?</h4>
+                        <p className="text-xs sm:text-sm text-gray-500 mb-6">Si el profesional tiene turnos activos, el sistema cambiará su estado a <b>Inactivo</b> de forma automática para proteger la agenda. Si no tiene turnos, se eliminará permanentemente.</p>
+                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full max-w-sm">
+                            <button 
+                                type="button"
+                                onClick={() => setConfirmarEliminacion(false)}
+                                className="w-full sm:flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-100 cursor-pointer font-medium transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={handleEliminar}
+                                disabled={loading}
+                                className="w-full sm:flex-1 px-5 py-2.5 bg-terracota-500 hover:bg-terracota-600 text-white rounded-xl text-sm font-medium transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+                            >
+                                {loading ? 'Procesando...' : 'Confirmar'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Cabecera */}
                 <div className="bg-terracota-500 px-5 sm:px-6 py-4 flex justify-between items-center text-white">
                     <h3 className="text-base sm:text-lg font-bold pr-2">
                         {profesionalAEditar ? 'Editar Profesional' : 'Registrar Nuevo Profesional'}
                     </h3>
                     <button 
+                        type="button"
                         onClick={onClose}
                         className="text-white/80 hover:text-white text-2xl font-bold cursor-pointer p-1 shrink-0"
                     >
@@ -249,21 +337,33 @@ function ModalNuevoProfesional({ isOpen, onClose, onProfesionalGuardado, profesi
                     </div>
 
                     {/* Pie del Modal */}
-                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:space-x-3 pt-4 border-t border-gray-100">
-                        <button 
-                            type="button"
-                            onClick={onClose}
-                            className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer text-center"
-                        >
-                            Cancelar
-                        </button>
-                        <button 
-                            type="submit"
-                            disabled={loading || (!loadingPermisos && !tienePermiso('carga_profesionales'))}
-                            className="w-full sm:w-auto px-5 py-2.5 bg-terracota-500 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-terracota-600 transition-colors shadow-sm cursor-pointer disabled:opacity-50 text-center"
-                        >
-                            {loading ? 'Guardando...' : (profesionalAEditar ? 'Guardar Cambios' : 'Guardar Profesional')}
-                        </button>
+                    <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-2 pt-4 border-t border-gray-100">
+                        {profesionalAEditar ? (
+                            <button 
+                                type="button"
+                                onClick={() => setConfirmarEliminacion(true)}
+                                className="w-full sm:w-auto px-4 py-2.5 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 rounded-lg text-xs sm:text-sm font-medium transition-colors cursor-pointer text-center"
+                            >
+                                Eliminar Profesional
+                            </button>
+                        ) : <div />}
+
+                        <div className="flex flex-col-reverse sm:flex-row gap-2 w-full sm:w-auto">
+                            <button 
+                                type="button"
+                                onClick={onClose}
+                                className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer text-center"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                type="submit"
+                                disabled={loading || (!loadingPermisos && !tienePermiso('carga_profesionales'))}
+                                className="w-full sm:w-auto px-5 py-2.5 bg-terracota-500 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-terracota-600 transition-colors shadow-sm cursor-pointer disabled:opacity-50 text-center"
+                            >
+                                {loading ? 'Guardando...' : (profesionalAEditar ? 'Guardar Cambios' : 'Guardar Profesional')}
+                            </button>
+                        </div>
                     </div>
 
                 </form>
