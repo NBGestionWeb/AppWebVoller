@@ -28,15 +28,22 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
 
     useEffect(() => {
         if (isOpen) {
-            let fechaActual = '';
+            const hoyStr = new Date().toISOString().split('T')[0];
+            let fechaActual = hoyStr;
+
             if (fechaSeleccionada) {
                 const [f, h] = fechaSeleccionada.split('T');
                 if (f) fechaActual = f;
                 if (h) setHora(h.slice(0, 5));
             } else {
-                fechaActual = new Date().toISOString().split('T')[0];
                 setHora('09:00');
             }
+
+            // Si la fecha seleccionada es anterior a hoy, la forzamos a hoy
+            if (fechaActual < hoyStr) {
+                fechaActual = hoyStr;
+            }
+
             setFecha(fechaActual);
             setDniInput('');
             setPacienteEncontrado(null);
@@ -57,10 +64,9 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
 
     const validarDiaFinDeSemana = (fechaStr) => {
         if (!fechaStr) return;
-        // Creamos la fecha localmente para evitar desfases horarios
         const [anio, mes, dia] = fechaStr.split('-');
-        const fechaObj = new Date(anio, mes - 1, dia);
-        const diaSemana = fechaObj.getDay(); // 0 = Domingo, 6 = Sábado
+        const fechaObj = new Date(anio, Number(mes) - 1, Number(dia));
+        const diaSemana = fechaObj.getDay();
 
         if (diaSemana === 0) {
             setMensajeAlerta({ 
@@ -73,7 +79,6 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                 tipo: 'error' 
             });
         } else {
-            // Si es un día hábil o el sábado fue permitido mediante la excepción, limpiamos la alerta de fin de semana
             setMensajeAlerta(null);
         }
     };
@@ -165,7 +170,7 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
     const validarDisponibilidadHoraria = async (profId, fechaSeleccionada, horaSeleccionada) => {
         const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         const [anio, mes, dia] = fechaSeleccionada.split('-');
-        const fechaObj = new Date(anio, mes - 1, dia);
+        const fechaObj = new Date(anio, Number(mes) - 1, Number(dia));
         const nombreDia = dias[fechaObj.getDay()];
 
         const { data, error } = await supabase
@@ -196,9 +201,20 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
         e.preventDefault();
         setMensajeAlerta(null);
 
-        // Validación final por si intentan enviar en fin de semana bloqueado
+        // VALIDACIÓN ESTRICTA DE FECHA Y HORA PASADA
+        const ahora = new Date();
+        const fechaHoraIngresada = new Date(`${fecha}T${hora}:00`);
+
+        if (fechaHoraIngresada < ahora) {
+            setMensajeAlerta({ 
+                texto: 'No se pueden agendar turnos en fechas u horarios anteriores al momento actual.', 
+                tipo: 'error' 
+            });
+            return;
+        }
+
         const [anio, mes, dia] = fecha.split('-');
-        const fechaObj = new Date(anio, mes - 1, dia);
+        const fechaObj = new Date(anio, Number(mes) - 1, Number(dia));
         const diaSemana = fechaObj.getDay();
 
         if (diaSemana === 0) {
@@ -227,6 +243,34 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
 
         setLoading(true);
         try {
+            const fechaHoraCompleta = `${fecha}T${hora}:00`;
+
+            // Verificar si el paciente ya tiene un turno en este horario
+            const { data: turnosPacienteMismoHorario, error: errPacienteHorario } = await supabase
+                .from('turnos')
+                .select(`
+                    id,
+                    profesionales (nombre, apellido)
+                `)
+                .eq('paciente_id', pacienteEncontrado.id)
+                .eq('fecha_hora', fechaHoraCompleta)
+                .neq('estado', 'cancelado');
+
+            if (errPacienteHorario) throw errPacienteHorario;
+
+            if (turnosPacienteMismoHorario && turnosPacienteMismoHorario.length > 0) {
+                const profAsignado = turnosPacienteMismoHorario[0].profesionales 
+                    ? `Dr./a. ${turnosPacienteMismoHorario[0].profesionales.apellido}` 
+                    : 'otro profesional';
+
+                setMensajeAlerta({ 
+                    texto: `⚠️ Conflicto de horario: El paciente ${pacienteEncontrado.nombre} ${pacienteEncontrado.apellido} ya tiene un turno agendado en este mismo horario (${hora} hs) con ${profAsignado}.`, 
+                    tipo: 'error' 
+                });
+                setLoading(false);
+                return;
+            }
+
             // 1. Verificar licencias o vacaciones del profesional
             const { data: licencias, error: errLicencias } = await supabase
                 .from('eventos_calendario')
@@ -246,7 +290,7 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                 return;
             }
 
-            // 2. Verificar disponibilidad horaria semanal del profesional
+            // 2. Verificar disponibilidad horaria semanal
             const validacionHoraria = await validarDisponibilidadHoraria(profesionalId, fecha, hora);
             if (!validacionHoraria.disponible) {
                 setMensajeAlerta({ texto: validacionHoraria.mensaje, tipo: 'error' });
@@ -254,14 +298,13 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                 return;
             }
 
-            const fechaHoraCompleta = `${fecha}T${hora}:00`;
-
-            // 3. Verificar si el profesional ya tiene un turno asignado con otro paciente en este horario
+            // 3. Verificar si el profesional ya tiene turno con otro paciente
             const { data: turnosExistentes, error: errTurnosExistentes } = await supabase
                 .from('turnos')
                 .select('id')
                 .eq('profesional_id', profesionalId)
-                .eq('fecha_hora', fechaHoraCompleta);
+                .eq('fecha_hora', fechaHoraCompleta)
+                .neq('estado', 'cancelado');
 
             if (errTurnosExistentes) throw errTurnosExistentes;
 
@@ -297,11 +340,12 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
 
     if (!isOpen) return null;
 
-    // Evaluamos si el día seleccionado es sábado para mostrar u ocultar la casilla de excepción
     const [anioSel, mesSel, diaSel] = fecha ? fecha.split('-') : [0, 0, 0];
-    const esSabadoSeleccionado = fecha ? new Date(anioSel, mesSel - 1, diaSel).getDay() === 6 : false;
-    const esDomingoSeleccionado = fecha ? new Date(anioSel, mesSel - 1, diaSel).getDay() === 0 : false;
+    const esSabadoSeleccionado = fecha ? new Date(anioSel, Number(mesSel) - 1, Number(diaSel)).getDay() === 6 : false;
+    const esDomingoSeleccionado = fecha ? new Date(anioSel, Number(mesSel) - 1, Number(diaSel)).getDay() === 0 : false;
     const turnoBloqueadoPorFinDeSemana = esDomingoSeleccionado || (esSabadoSeleccionado && !permitirSabado);
+
+    const hoyStr = new Date().toISOString().split('T')[0];
 
     const horasDisponibles = [
         '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', 
@@ -351,6 +395,7 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Fecha *</label>
                                 <input 
                                     type="date" 
+                                    min={hoyStr} // RESTRICCIÓN: Impide seleccionar fechas anteriores a hoy
                                     className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-terracota-500 bg-white"
                                     value={fecha}
                                     onChange={(e) => setFecha(e.target.value)}
@@ -373,7 +418,6 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                             </div>
                         </div>
 
-                        {/* Opción de excepción para Sábados */}
                         {esSabadoSeleccionado && (
                             <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-center space-x-2">
                                 <input 
@@ -494,7 +538,7 @@ function ModalNuevoTurno({ isOpen, onClose, onTurnoCreado, fechaSeleccionada }) 
                     </form>
                 </div>
 
-                {/* Pie del Modal con botones adaptables */}
+                {/* Pie del Modal */}
                 <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-end gap-2">
                     <button 
                         type="button" 
